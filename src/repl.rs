@@ -1,8 +1,8 @@
 use std::io;
 use std::io::prelude::*;
 use std::error::Error;
-use crate::interpreter::base::Lexer;
-use crate::ast::base::{Parser};
+use crate::interpreter::lexer::Lexer;
+use crate::ast::parser::Parser;
 
 
 pub fn prompt(before: &str) -> Result<String, Box<dyn Error>> {

@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter, self};
-
+use super::operator::Operator;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -10,7 +10,7 @@ pub enum Expression {
     UndefinedLiteral,
     Combination {
         left: Option<Box<Expression>>,
-        operator: Operation,
+        operator: Operator,
         right: Option<Box<Expression>>
     },
     Call {

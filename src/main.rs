@@ -7,7 +7,7 @@ pub mod interpreter;
 pub mod repl;
 pub mod ast;
 
-use ast::context::Environment;
+use ast::environment::Environment;
 
 
 #[derive(FromArgs, Debug)]
@@ -38,8 +38,8 @@ impl Display for Prompt {
 }
 
 fn exec(content: String, env: &mut Environment) -> String {
-    let lexer = interpreter::base::LexerIterator::new(content.chars().peekable());
-    let parser = ast::base::Parser::new(lexer);
+    let lexer = interpreter::lexer::LexerIterator::new(content.chars().peekable());
+    let parser = ast::parser::Parser::new(lexer);
     match parser.parse_program() {
         Ok(stmts) => {
             let mut response = String::new();

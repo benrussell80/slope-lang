@@ -1,5 +1,12 @@
-use crate::ast::base::{Expression, Parameter, Parser, Statement::*, Operation, Location::*};
-use crate::interpreter::base::{LexerIterator, Token};
+pub mod test_objects;
+use crate::ast::expression::Expression;
+use crate::ast::parameter::Parameter;
+use crate::ast::parser::Parser;
+use crate::ast::statement::Statement::*;
+use crate::ast::location::Location::*;
+use crate::interpreter::lexer::LexerIterator;
+use crate::interpreter::token::Token;
+use crate::ast::operator::Operator;
 
 macro_rules! parse {
     ($text:expr, $statements:expr) => {
@@ -40,7 +47,7 @@ fn test_negative_integer_assignment() {
             identifier: "negOne".into(),
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Minus, Prefix),
+                operator: Operator(Token::Minus, Prefix),
                 right: Some(Box::new(Expression::IntegerLiteral(1)))
             }
         }]
@@ -76,10 +83,10 @@ fn test_function_statement() {
             }],
             expression: Expression::Combination {
                 left: Some(Box::new(Expression::Identifier("pi".into()))),
-                operator: Operation(Token::Multiply, Infix),
+                operator: Operator(Token::Multiply, Infix),
                 right: Some(Box::new(Expression::Combination {
                     left: Some(Box::new(Expression::Identifier("radius".into()))),
-                    operator: Operation(Token::Exponent, Infix),
+                    operator: Operator(Token::Exponent, Infix),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 }))
             }
@@ -103,7 +110,7 @@ fn test_function_statement_with_params() {
             ],
             expression: Expression::Combination {
                 left: Some(Box::new(Expression::Identifier("width".into()))),
-                operator: Operation(Token::Multiply, Infix),
+                operator: Operator(Token::Multiply, Infix),
                 right: Some(Box::new(Expression::Identifier("height".into())))
             }
         }]
@@ -129,10 +136,10 @@ fn test_multiple_statements() {
                 }],
                 expression: Expression::Combination {
                     left: Some(Box::new(Expression::Identifier("pi".into()))),
-                    operator: Operation(Token::Multiply, Infix),
+                    operator: Operator(Token::Multiply, Infix),
                     right: Some(Box::new(Expression::Combination {
                         left: Some(Box::new(Expression::Identifier("radius".into()))),
-                        operator: Operation(Token::Exponent, Infix),
+                        operator: Operator(Token::Exponent, Infix),
                         right: Some(Box::new(Expression::IntegerLiteral(2)))
                     }))
                 }
@@ -168,7 +175,7 @@ fn test_not_operator() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Not, Prefix),
+                operator: Operator(Token::Not, Prefix),
                 right: Some(Box::new(Expression::BooleanLiteral(true)))
             }
         }]
@@ -182,10 +189,10 @@ fn test_not_not_operator() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Not, Prefix),
+                operator: Operator(Token::Not, Prefix),
                 right: Some(Box::new(Expression::Combination {
                     left: None,
-                    operator: Operation(Token::Not, Prefix),
+                    operator: Operator(Token::Not, Prefix),
                     right: Some(Box::new(Expression::BooleanLiteral(true)))
                 }))
             }
@@ -200,7 +207,7 @@ fn test_negative_number() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Minus, Prefix),
+                operator: Operator(Token::Minus, Prefix),
                 right: Some(Box::new(Expression::IntegerLiteral(5)))
             }
         }]
@@ -214,10 +221,10 @@ fn test_negative_negative_number() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Minus, Prefix),
+                operator: Operator(Token::Minus, Prefix),
                 right: Some(Box::new(Expression::Combination {
                     left: None,
-                    operator: Operation(Token::Minus, Prefix),
+                    operator: Operator(Token::Minus, Prefix),
                     right: Some(Box::new(Expression::IntegerLiteral(5)))
                 }))
             }
@@ -231,10 +238,10 @@ fn composite_expression() {
         "5 + 7 * 2;",
         vec![ExpressionStatement {
             expression: Expression::Combination {
-                operator: Operation(Token::Plus, Infix),
+                operator: Operator(Token::Plus, Infix),
                 left: Some(Box::new(Expression::IntegerLiteral(5))),
                 right: Some(Box::new(Expression::Combination {
-                    operator: Operation(Token::Multiply, Infix),
+                    operator: Operator(Token::Multiply, Infix),
                     left: Some(Box::new(Expression::IntegerLiteral(7))),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 }))
@@ -249,14 +256,14 @@ fn composite_expression_2() {
         "5 * 7 + 2 * 5;",
         vec![ExpressionStatement {
             expression: Expression::Combination {
-                operator: Operation(Token::Plus, Infix),
+                operator: Operator(Token::Plus, Infix),
                 left: Some(Box::new(Expression::Combination {
-                    operator: Operation(Token::Multiply, Infix),
+                    operator: Operator(Token::Multiply, Infix),
                     left: Some(Box::new(Expression::IntegerLiteral(5))),
                     right: Some(Box::new(Expression::IntegerLiteral(7)))
                 })),
                 right: Some(Box::new(Expression::Combination {
-                    operator: Operation(Token::Multiply, Infix),
+                    operator: Operator(Token::Multiply, Infix),
                     left: Some(Box::new(Expression::IntegerLiteral(2))),
                     right: Some(Box::new(Expression::IntegerLiteral(5)))
                 })),
@@ -272,10 +279,10 @@ fn test_expression_with_exponent() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Minus, Prefix),
+                operator: Operator(Token::Minus, Prefix),
                 right: Some(Box::new(Expression::Combination {
                     left: Some(Box::new(Expression::IntegerLiteral(7))),
-                    operator: Operation(Token::Exponent, Infix),
+                    operator: Operator(Token::Exponent, Infix),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 }))
             }
@@ -290,13 +297,13 @@ fn test_expression_with_negative_exponent() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Minus, Prefix),
+                operator: Operator(Token::Minus, Prefix),
                 right: Some(Box::new(Expression::Combination {
                     left: Some(Box::new(Expression::IntegerLiteral(2))),
-                    operator: Operation(Token::Exponent, Infix),
+                    operator: Operator(Token::Exponent, Infix),
                     right: Some(Box::new(Expression::Combination {
                         left: None,
-                        operator: Operation(Token::Minus, Prefix),
+                        operator: Operator(Token::Minus, Prefix),
                         right: Some(Box::new(Expression::IntegerLiteral(2)))
                     }))
                 })),
@@ -312,10 +319,10 @@ fn test_expression_statement_with_semicolon() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Minus, Prefix),
+                operator: Operator(Token::Minus, Prefix),
                 right: Some(Box::new(Expression::Combination {
                     left: Some(Box::new(Expression::IntegerLiteral(7))),
-                    operator: Operation(Token::Exponent, Infix),
+                    operator: Operator(Token::Exponent, Infix),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 }))
             }
@@ -330,10 +337,10 @@ fn test_not_as_precedence() {
         // (not true) as N
         vec![ExpressionStatement {
             expression: Expression::Combination {
-                operator: Operation(Token::As, Infix),
+                operator: Operator(Token::As, Infix),
                 left: Some(Box::new(Expression::Combination {
                     left: None,
-                    operator: Operation(Token::Not, Prefix),
+                    operator: Operator(Token::Not, Prefix),
                     right: Some(Box::new(Expression::BooleanLiteral(true)))
                 })),
                 right: Some(Box::new(Expression::Identifier("N".into())))
@@ -350,10 +357,10 @@ fn test_negative_subtraction() {
             expression: Expression::Combination {
                 left: Some(Box::new(Expression::Combination {
                     left: None,
-                    operator: Operation(Token::Minus, Prefix),
+                    operator: Operator(Token::Minus, Prefix),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 })),
-                operator: Operation(Token::Plus, Infix),
+                operator: Operator(Token::Plus, Infix),
                 right: Some(Box::new(Expression::IntegerLiteral(2)))
             }
         }]
@@ -368,13 +375,13 @@ fn test_grouped_expression() {
             expression: Expression::Combination {
                 left: Some(Box::new(Expression::Combination {
                     left: Some(Box::new(Expression::IntegerLiteral(2))),
-                    operator: Operation(Token::Minus, Infix),
+                    operator: Operator(Token::Minus, Infix),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 })),
-                operator: Operation(Token::Division, Infix),
+                operator: Operator(Token::Division, Infix),
                 right: Some(Box::new(Expression::Combination {
                     left: Some(Box::new(Expression::IntegerLiteral(2))),
-                    operator: Operation(Token::Plus, Infix),
+                    operator: Operator(Token::Plus, Infix),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 }))
             }
@@ -391,17 +398,17 @@ fn test_nested_grouped_expression() {
                 left: Some(Box::new(Expression::Combination {
                     left: Some(Box::new(Expression::Combination {
                         left: Some(Box::new(Expression::IntegerLiteral(2))),
-                        operator: Operation(Token::Minus, Infix),
+                        operator: Operator(Token::Minus, Infix),
                         right: Some(Box::new(Expression::IntegerLiteral(2)))
                     })),
-                    operator: Operation(Token::Division, Infix),
+                    operator: Operator(Token::Division, Infix),
                     right: Some(Box::new(Expression::Combination {
                         left: Some(Box::new(Expression::IntegerLiteral(2))),
-                        operator: Operation(Token::Plus, Infix),
+                        operator: Operator(Token::Plus, Infix),
                         right: Some(Box::new(Expression::IntegerLiteral(2)))
                     }))
                 })),
-                operator: Operation(Token::Exponent, Infix),
+                operator: Operator(Token::Exponent, Infix),
                 right: Some(Box::new(Expression::IntegerLiteral(2)))
             }
         }]
@@ -417,7 +424,7 @@ fn test_call_expression() {
                 function: Box::new(Expression::Identifier("foo".into())),
                 arguments: vec![Expression::Combination {
                     left: Some(Box::new(Expression::IntegerLiteral(2))),
-                    operator: Operation(Token::Plus, Infix),
+                    operator: Operator(Token::Plus, Infix),
                     right: Some(Box::new(Expression::IntegerLiteral(2)))
                 }]
             }
@@ -467,7 +474,7 @@ fn test_call_expression_in_composite_expression() {
                         Expression::IntegerLiteral(2)
                     ]
                 })),
-                operator: Operation(Token::Question, Infix),
+                operator: Operator(Token::Question, Infix),
                 right: Some(Box::new(Expression::IntegerLiteral(42)))
             }
         }]
@@ -481,7 +488,7 @@ fn test_call_expression_in_prefix_expression() {
         vec![ExpressionStatement {
             expression: Expression::Combination {
                 left: None,
-                operator: Operation(Token::Minus, Prefix),
+                operator: Operator(Token::Minus, Prefix),
                 right: Some(Box::new(Expression::Call {
                     function: Box::new(Expression::Identifier("foo".into())),
                     arguments: vec![
