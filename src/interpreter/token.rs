@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, self};
 
-
+// token should capture line #, col start, and span
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Illegal(String),
@@ -48,6 +48,19 @@ pub enum Token {
     In,
     Bang,
     Imaginary,
+    Bar,
+    Union,
+    Intersection,
+    SetDifference,
+    SymmetricDifference,
+    For,
+    Where,
+    Import,
+    Use,
+    Export,
+    Pub,
+    FatArrow,
+    SkinnyArrow,
 }
 
 impl Display for Token {
@@ -99,6 +112,19 @@ impl Display for Token {
             In => write!(f, "in"),
             Bang => write!(f, "!"),
             Imaginary => write!(f, "i"),
+            Bar => write!(f, "|"),
+            Union => write!(f, "\u{222a}"),
+            Intersection => write!(f, "\u{2229}"),
+            SetDifference => write!(f, "\\"),
+            SymmetricDifference => write!(f, "\u{0394}"),
+            For => write!(f, "for"),
+            Where => write!(f, "where"),
+            Import => write!(f, "import"),
+            Use => write!(f, "use"),
+            Export => write!(f, "export"),
+            Pub => write!(f, "pub"),
+            FatArrow => write!(f, "=>"),
+            SkinnyArrow => write!(f, "->"),
         }
     }
 }

@@ -1,216 +1,297 @@
-# Specification for Language
-## Types
-Numbers are the only primitive types. Period.
-"Types" are manifested as constraints on numbers to be contained in domains (e.g. fields or intervals).
-For example, this function
-```
-add(x: R, y: R): R = x + y
-```
-only accepts x and y as real numbers. Therefore, imaginary numbers could not be passed.
-Real numbers are the default domain annotation. Domain inference would be a future detail.
+# Slope
+Slope is a programming language with a syntax matching mathematical notation as closely as reasonably possible.
 
-Fields: Reals, Imaginaries, Integers.
-Matrices, Vectors, Tensors, etc.
-Functions, constants, ranges, sets, booleans.
-Subscripts to hold parts
-Factorials, partials, limits
-vector: (x, y, z)  # analogous to a tuple in Rust
-set: {1, 2, 3}
-absolute value/norm: |...|
-stepped range: 1 to 10 (inclusive)
-compile to latex and wasm
-White space should not matter
-`in/of` instad of epsilon for element of
-// comments
-undefined and Infinity (infinity in an input, undefined is an output)
-all functions should be pure (and therefore results can be cached)
-if a function is impure then it should be marked as such. Or if it calls an impure function then it is impure by association.
-Higher order functions
-- Set
-    - Field
-        - Interval (0 <= x < Infinity)
+## The Basics
+Slope is intended to seamlessly bridge the gap between math notation learned in school, and programming syntax. To that end, many opinionated choices have gone into Slope's implementation. That being said, Slope's developers will always be open to hearing what could be done better. Nonetheless, Slope is not a general purpose programming language.
 
-### Basic Tests
-- arithmetic and assignment
-```rust
-radius = 10
-pi = 3.14
-area = radius ^ 2 * pi
-volume = 4 / 3 * pi * r ^ 3
+### Values
+Numbers, and collections thereof, are the only "types" in Slope; there are no string-like types, pointers, dictionaries, etc.
 
-length = 5
-width = 6.2
-perimeter = 2 * (length + width)
+Values are stored using the following syntax.
+
 ```
-- expressions
-```rust
-2 + 2  // should print out 4
-pi = 3.14  // not an expression
-pi  // should print out the value of pi
-```
-- booleans
-```rust
-t = true
-f = false
-t and f  // false
-t or f  // true
-t xor t  // false
-```
-- typed numbers and imaginaries/complex
-```rust
-// N, Z, Q, R, C
-num: R = 1  // an 'integer' that is actually a real number
-comp = 1 + 2i
+let pi = 3.14;
 ```
 
-### Function Definitions
-```rust
-// area of a circle
-// constants are defined outside of functions
-[
-    1  to 20;
-    21 to 40;
-    41 to 60;
-]
-let approxPi: R = 3.14
-// and can be used inside functions
-fn circleArea(r: R): R = approxPi * r^2
+This will store the value `3.14` of the type real to `pi`.
 
-// functions cannot have any local variables
-// NOT ALLOWED
-changePi(v: R) = approxPi = v  // X
+Currently, the supported types are:
+- Reals
+- Integers
+- Booleans
+- Functions
 
-// functions must only use global constants, input parameters, or other functions
+For information about future types, see [the future intended work](#The-Future).
 
-// fuctions can take infinity as a parameter
+All values are constant. There exists no syntax for updating a value. Therefore, this is not possible:
 
-// but will not return infinity (will return undefined)
-hole(x: R): R = (x + 1) / (x - 2)
-
-hole(3)  // 4
-hole(2)  // undefined
-
-// a number defined in one field may be undefined in another
-imagSqrt(i: R): Q = i^(-2)
-imagSqrt(-1)  // 1i
-
-realSqrt(i: R): R = i^(-2)
-realSqrt(-1)  // undefined
-
-// higher order sum function
-sum(f in (V) -> T, s in Set[V]) in T -> /* implementation details */
-
-// simple dot product function
-// lambda function for the inside of the sum
-// type inference?
-dot(a in R[n], b in R[n]) in R -> sum(
-    (i) -> a[i] * b[i],
-    { i in N: 1 <= i and i <= n }
-)
-
-// Sets/subsets
-let Evens = { i in N: i % 2 == 0 }
-let FizzBuzzNumbers = { i in N: i % 3 == 0 or i % 5 == 0 }
-BabyBoomerBirthYears = { i in N: 1946 <= i and i <= 1964 }
-IdentityMatrices = { i in R[n, n]: det(i) = 1 and inverse(i) = i}
-
-// booleans
-// true and false
-
-
-dot([1, 2, 3], [3, 2, 1]) // 3 + 4 + 3 -> 10 
-
-// Matrix multiplication
-// type signature for a matrix
-unitTwoByTwoMatrix: R[2, 2] = [
-    1, 0;
-    0, 1
-]
-
-buildMatrix(f as (N, N) -> T[m, n], ) in T[m, n]
-
-inner1(a in R[m, n], k in N) in (i in N, j in N) in R -> sum(
-
-)
-
-set()
-
-matrixMult(a, b) -> sum(
-    (k) -> a[i, k] * b[k, j],
-    { k: 1 <= k and k <= n }
-)
-
-A = [
-    1, 2, 3;
-    4, 5, 6
-]
-B = [
-    1;
-    1;
-    1
-]
-
-matrixMult(A, B)  // -> R[2, 1] -> [6; 15]
+```
+let pi = 3.14;
+pi = 3;
 ```
 
-<img src="./dotproduct.svg" alt="dot product equation as a summation" style="background: white;" />
+This program will result in a syntax error.
 
-```rust
-// the set of even numbers
-let Evens = { x in N: x % 2 == 0 };
+### Arithmetic
+The basic arithmetic operations are defined syntactically as follows:
+- `+`: addition
+- `-`: subtraction
+- `*`: multiplication
+- `/`: division
+- `^`: exponentiation
+- `%`: modulo
 
-// piecewise fibonacci function with recursion (cached automatically because it is a pure function)
-fn fib(i: N) -> N = {
-    i if i == 0 or i == 1;
-    fib(i - 1) + fib(i - 2) else;
+Slope is also defined to allow common mathematical operations not usually found in other programming languages such as:
+- `|<number>|`: absolute value
+- more to come; see [the future](#The-Future)
+
+### Functions
+Functions are defined using the following syntax:
+```
+fn sqrt(x) = x ^ 0.5;
+```
+
+Functions can contain only one expression after `=`. Functions also cannot have locally-bound values. These two choices were deliberately made in order to follow mathematical notation and to promote creativity when writing code.
+
+Functions also receive all inputs by value rather than by reference. Passing by reference would serve no purpose as there is no syntax for mutation in Slope.
+
+### Control Flow
+Piecewise functions allow a function to return different values based on certain conditions. For example, the nth fibonacci number can be found using
+
+```
+fn fib(i) = {
+    1 if i == 0 or i == 1;
+    fib(i - 2) + fib(i - 1) else;
 };
-
-// the set of first 20 fibonacci numbers
-let Fn = { f(x), x in N: x < 20 };
-
-4 in Fn;  // false
-5 in Fn;  // true
-
-// ordered pairs
-fn f(x: R) -> R = x^2 + 2*x - 8;
-
-let xs = { x in Z: -10 <= x and x <= 10 }
-
-// f can be called on Z because Z < R
-let points = { (x, f(x)) for x in xs };
-
-// plot ordered pairs
-
-
-/*
-    // piecewise function
-    <func-name>(<parameters>) = {
-        <expression> for <condition>,
-        ...,
-        <expression> for <condition|else>
-    }
-
-    // set notation
-    { <identifier> in <domain>: <condition> }
-*/
-
-
-// gaussian noise generator (impure because the same inputs will likely produce different outputs)
-// impure functions will not cache
-impure gaussian_noise(mean, std) = /* implementation details */
 ```
 
-## Keywords
-- `if`
-- `in`
-- `and`
-- `or`
-- `xor`
-- `not`
-- `undefined`
-- `else`
+Piecewise blocks are expressions on their own and so can be bound to a value. For example,
 
-## Operations and Symbols
-- Arithmetic: `+, -, *, /, ^, |, <=, =, >=, <, >`
-- Indexing: `a[1], b[1, 2]`
-- Function body begin: `->`
+```
+let x = randomNumberBetween(0, 10);
+
+let x_is_odd = {
+    false if x % 2 == 0;
+    true else;
+};
+```
+
+(Note, however, that there currently exists no random number generator in Slope.)
+
+Piecewise blocks are also nestable. For example,
+
+```
+let x = randomNumberBetween(0, 10);
+
+let x_is_2 = {
+    {
+        true if x == 2;
+        false else;
+    } if x % 2 == 0;
+    false else;
+};
+```
+
+### Equality, Inequality, and Booleans
+Equality and inequality in Slope programs are employed as such:
+- `<`, `<=`: Less than, less than or equal
+- `>`, `>=`: Greather than, greater than or equal
+- `==`: Equals
+- `=/=`: Not Equals
+
+Each of the above operations will produce one of the boolean values `true` or `false`.
+
+Conditional expressions employing these operations can be strung together using any of `and`, `or`, or `xor` (exclusive or). They evaluate as expected:
+- `true and true`: `true`
+- `true or true`: `true`
+- `true xor true`: `false`
+
+Only booleans can be combined with `and`, `or`, and `xor`; Slope does not allow truth-y evalution of, say, integers. Therefore, the following is not permitted:
+- `1 and 0`. This causes a runtime error.
+
+### Undefined
+When a function is called on an input outside of its domain then that function will return `undefined` (just as in basic math contexts). For example,
+
+```
+fn sqrt(n) = n ^ 0.5;
+let i = sqrt(-1);
+```
+
+`sqrt(-1)` returns `undefined` because complex numbers and type annotations are not currently implemented.
+
+Other basic operations can return undefined as well, such as:
+- `1 / 0`
+- `0 / 0`
+
+Piecewise blocks that do not have any arms with conditions evaluating to true will return undefined. For example,
+
+```
+let x = 2;
+let y = {
+    123 if x == 1;
+};
+```
+
+Piecewise blocks can be prevented from returning undefined by using `else`.
+
+`undefined` is different than undefined in say, JavaScript, where it may denote an uninitialized variable. In Slope, values cannot be uninitialized. If a value name is read and does not exist then that is a `NameError`.
+
+#### Handling Undefined
+To check if any value is undefined use the `?` infix operator. The `?` (called question mark or coalescence) operator offers a default for a value when it is undefined. For example,
+
+```
+fn line_with_hole(x) = (x - 1) * (x + 2) / (x + 2);
+let line_with_hole = line(-2) ? 0;
+```
+<!-- 
+### Sets
+As alluded to previously, "types" are manifested as sets in Slope (just as they are in mathematics). Sets can be defined to contain any of set of numbers/sets/etc. available in Slope. Set contents must all be the same type, however.
+
+#### Set Literals
+Sets can be explicitly created as such:
+```rust
+let S = { 1, 2, 3 };
+let PowerSetOfS = {
+    {},
+    { 1 }, { 2 }, { 3 },
+    { 1, 2 }, { 1, 3 }, { 2, 3 },
+    { 1, 2, 3 }
+};
+```
+
+#### Set-Builder Notation
+Sets can also be created implicitly using set builder notation commonly used in mathematics.
+```rust
+let Evens = { i in Z: i % 2 == 0 };
+let Odds = { i in Z: i % 2 =/= 0 };
+let PerfectSquares = { i in N: i ^ 0.5 % 1 == 0};
+let OddPerfectSquares = { i in PefectSquares: i % 2 =/= 0 };
+```
+
+#### Checking Existence
+To determine if a value exists in a set use the `in` infix operator:
+```rust
+let foundIt = 49 in PerfectSquares;  // true
+```
+
+Under the hood, set-builders will have a superset or universal set (the Reals, the Integers, the Naturals) and a set of conditions that a potential member must pass in order for `in` to return `true`. This condition-based existence is based on the implementation of Python's `range` function. See [this SO post for inspiration](https://stackoverflow.com/questions/30081275/why-is-1000000000000000-in-range1000000000000001-so-fast-in-python-3).
+
+In the future, notation such as
+```rust
+let PerfectSquares = { i ^ 2 for i in N };
+```
+will be accepted and preferred (this may required invertible functions, however).
+
+#### Checking If a Set is a Subset of Another Set
+In math, often it is important to know if a set is a subset of another set. Slope re-uses `<=` and `<` for the subset and proper subset operators. For example:
+
+```rust
+{ 1 } <= { 1, 2, 3 };  // true
+{ 1, 2, 3} <= { 1, 2, 3 };  // true
+{ 1, 2, 3} < { 1, 2, 3 };  // false
+{} < { 1, 2, 3 };  // true; empty set is a subset of every set
+```
+
+#### Union
+```rust
+let A = { 1, 2, 3 };
+let B = { 3, 4 };
+
+A \/ B == { 1, 2, 3, 4 };
+```
+
+#### Intersection
+```rust
+let A = { 1, 2, 3 };
+let B = { 3, 4 };
+
+A /\ B == { 3 };
+```
+
+#### Difference (Relative Complement)
+```rust
+let A = { 1, 2, 3 };
+let B = { 3, 4 };
+
+A \ B == { 1, 2 };
+```
+
+#### Symmetric Difference
+```rust
+let A = { 1, 2, 3 };
+let B = { 3, 4 };
+
+A /_\ B == { 1, 2, 4 };  // equivalent to `xor` for booleans
+```
+
+#### Complement
+```cpp
+let A = { 1, 2, 3 };  // set of Z's
+
+\ A == { i in Z: i not in A)};
+```
+
+#### Multi-Sets
+Currently, sets only allow one instance of any given value. Multi-sets and their implementation are a future feature of Slope. -->
+
+### Reserved Yet Unused Symbols, Symbol Combinations and Keywords
+The following
+- `\`: set difference
+- `\/`: set union
+- `/\`: set intersection
+- `/_\`: set symmetric difference
+- `->`, `=>`: arrows to possibly be used for function declaration
+- `for`: keyword to be used in set-builders
+- `where`: keyword to be used in matrix-builders
+- `not in`: not in operation used for sets
+- `import`, `use`, `export`, `pub`: keywords possibly to be used in modules
+- `:`: colon used for type annotations
+- `!`: postfix operator used for factorial
+- `i`: postfix operator used for complex numbers (still okay to use in `let i = 1;`, for example; similar to python's use of `1j`)
+
+## About
+Slope's interpreter is written in Rust, and created by following Thorsten Ball's [book](https://interpreterbook.com/).
+
+### The Future
+#### New Types
+- [ ] Rationals
+- [ ] Naturals
+- [ ] Decimals (possibly to replace floats for Reals)
+- [ ] Complex numbers
+- [ ] Set literals
+- [ ] Set builders
+- [ ] Named set members (similar to enums)
+- [ ] Tuples (e.g. ordered pairs)
+- [ ] Vectors and matrices
+- [ ] Vector and matrix builders
+
+#### Operations
+- [ ] Factorial
+- [ ] Plus-or-minus (and minus-or-plus)
+- [ ] Set existence (`in`)
+- [ ] Set difference
+- [ ] Set union
+- [ ] Set intersections
+- [ ] Set symmetric difference
+- [ ] Subset and proper subset (`<=`, `<` for sets)
+
+##### Longshots
+These would be amazing but might never happen.
+- [ ] Derivatives and integrals of functions
+- [ ] Inverse of functions
+
+#### Features
+- [ ] Increased test coverage, automated workflows
+- [ ] Web-based REPL
+- [ ] Distributed extensions for:
+    - [ ] Syntax highlighting
+    - [ ] Font ligatures for various operations (`=/=`, `\/`, `/\`, `/_\`)
+- [ ] Comments and docstrings
+- [ ] Language documentation and specification
+- [ ] Function literals
+- [ ] Type annotations
+- [ ] Static typing
+- [ ] Undefined safety (with operations such as add, sub, etc.)
+- [ ] WebAssembly compilation
+- [ ] Modules, imports, and a standard library (possible just importing WebAssembly modules)
+- [ ] Increased efficiency, less use of Strings in interpreter

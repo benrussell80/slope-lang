@@ -112,8 +112,7 @@ impl Display for Object {
                     acc
                 }),
                 expression
-            ),
-            _ => write!(f, "<other>"),
+            )
         }
     }
 }

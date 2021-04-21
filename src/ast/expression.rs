@@ -16,7 +16,9 @@ pub enum Expression {
     Call {
         function: Box<Expression>,
         arguments: Vec<Expression>
-    }
+    },
+    PiecewiseBlock(Vec<(Expression, Expression)>),
+    AbsoluteValue(Box<Expression>),
 }
 
 impl Display for Expression {
@@ -29,7 +31,7 @@ impl Display for Expression {
             RealLiteral(value) => write!(f, "{}", value),
             UndefinedLiteral => write!(f, "undefined"),
             Combination { left, operator, right } => {
-                if let Some(value) = left {
+                if let Some(_value) = left {
                     write!(f, "{} {} {}", left.as_ref().unwrap(), operator, right.as_ref().unwrap())
                 } else {
                     write!(f, "{} {}", operator, right.as_ref().unwrap())
@@ -44,6 +46,16 @@ impl Display for Expression {
                     acc
                 }))
             },
+            PiecewiseBlock(arms) => {
+                writeln!(f, "{{")?;
+                for (value, cond) in arms.iter() {
+                    writeln!(f, "    {} if {};", value, cond)?;
+                }
+                write!(f, "}}")
+            },
+            AbsoluteValue(expr) => {
+                write!(f, "|{}|", expr)
+            }
         }
     }
 }

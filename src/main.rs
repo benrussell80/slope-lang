@@ -8,6 +8,7 @@ pub mod repl;
 pub mod ast;
 
 use ast::environment::Environment;
+use repl::exec;
 
 
 #[derive(FromArgs, Debug)]
@@ -37,23 +38,6 @@ impl Display for Prompt {
     }
 }
 
-fn exec(content: String, env: &mut Environment) -> String {
-    let lexer = interpreter::lexer::LexerIterator::new(content.chars().peekable());
-    let parser = ast::parser::Parser::new(lexer);
-    match parser.parse_program() {
-        Ok(stmts) => {
-            let mut response = String::new();
-            for stmt in stmts {
-                let obj = env.eval_statement(&stmt);
-                response.push_str(&format!("{}", obj));
-                response.push_str("\n");
-            }
-            String::from(response.trim_end())
-        },
-        Err(error) => format!("Error: {}", error)
-    }
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     // setup
     let mut config: Config = argh::from_env();
@@ -65,7 +49,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let Some(path) = config.file {
         // execute file using path
         let content = fs::read_to_string(path)?;
-        println!("{}", exec(content, &mut env));
+        println!(
+            "{}",
+            match exec(&content, &mut env) {
+                Ok(s) => s,
+                Err(e) => format!("{}", e)
+            }
+        );
     } else {
         config.repl = true;
     }
@@ -77,15 +67,38 @@ fn main() -> Result<(), Box<dyn Error>> {
         loop {
             let input = repl::prompt(&format!("{}", &prompt))?;
             text.push_str(&input);
+
+            let open_braces = text.chars().filter(|c| c == &'{' || c == &'}').fold(0, |open_braces, c| {
+                if open_braces == 0 && c == '}' {
+                    -1
+                } else if open_braces < 0 {
+                    open_braces
+                } else if c == '{' {
+                    open_braces + 1
+                } else {
+                    open_braces - 1
+                }
+            });
             
-            if !text.trim_end().ends_with(";") {
+            if open_braces < 0 {
+                println!("Mismatched braces.");
+                text.clear();
+                prompt = Prompt::Start;
+                continue
+            };
+            
+            if !text.trim_end().ends_with(";") || open_braces != 0 {
                 prompt = Prompt::Continue;
                 continue
             };
 
-            let response = exec(text, &mut env);
-
-            println!("{}", response);
+            println!(
+                "{}",
+                match exec(&text, &mut env) {
+                    Ok(s) => s,
+                    Err(e) => format!("{}", e)
+                }
+            );
             text = String::new();
             prompt = Prompt::Start;
         }

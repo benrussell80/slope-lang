@@ -1,9 +1,9 @@
+use super::errors::SyntaxError;
 use super::parameter::Parameter;
 use std::iter::Peekable;
 use crate::interpreter::lexer::LexerIterator;
 use super::statement::Statement;
 use crate::interpreter::token::Token;
-use std::error::Error;
 use super::expression::Expression;
 use super::operator::Operator;
 use super::location::Location;
@@ -21,7 +21,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_program(mut self) -> Result<Vec<Statement>, Box<dyn Error>> {
+    pub fn parse_program(mut self) -> Result<Vec<Statement>, SyntaxError> {
         let mut statements = vec![];
         loop {
             match self.parse_next_statement()? {
@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
         Ok(statements)
     }
 
-    fn parse_next_statement(&mut self) -> Result<Option<Statement>, Box<dyn Error>> {
+    fn parse_next_statement(&mut self) -> Result<Option<Statement>, SyntaxError> {
         use Token::*;
         match self.iterator.peek() {
             Some(Let) => self.parse_assignment_statement().map(Some),
@@ -42,7 +42,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_prefix_expression(&mut self) -> Result<Expression, Box<dyn Error>> {
+    fn parse_prefix_expression(&mut self) -> Result<Expression, SyntaxError> {
         match self.iterator.next().expect("There should be another token here") {
             Token::Undefined => Ok(Expression::UndefinedLiteral),
             Token::Identifier(name) => Ok(Expression::Identifier(name)),
@@ -70,11 +70,73 @@ impl<'a> Parser<'a> {
                     Err("Missing right parenthesis after grouped expression.".into())
                 }
             },
+            Token::Bar => {
+                let expr = self.parse_expression(Precedence::Lowest)?;
+                if let Some(_) = self.iterator.next_if(|token| token == &Token::Bar) {
+                    Ok(Expression::AbsoluteValue(Box::new(expr)))
+                } else {
+                    Err("Missing closing absolute value bar.".into())
+                }
+            },
             _ => unreachable!()
         }
     }
 
-    fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, Box<dyn Error>> {
+    fn parse_piecewise_block_expression(&mut self) -> Result<Expression, SyntaxError> {
+        // eat left brace
+        self.iterator.next().map(drop);
+        let mut arms = vec![];
+        let mut has_else_arm = false;
+        /*
+        e.g. heaviside function
+        {
+            0 if x < 0;
+            0.5 if x == 0;
+            1 else;    
+        }
+        */
+        loop {
+            if let Some(_) = self.iterator.next_if_eq(&Token::RightBrace) {
+                break
+            };
+            // get next expression...
+            let value_expr = self.parse_expression(Precedence::Lowest)?;
+
+            // ...until if or else
+            match self.iterator.next() {
+                Some(Token::Else) => {
+                    if !has_else_arm {
+                        has_else_arm = true
+                    } else {
+                        return Err("Piecewise block cannot have multiple `else` arms.".into())
+                    }
+                },
+                _ => {}
+            };
+
+            let cond_expr = if self.iterator.peek() != Some(&Token::Semicolon) {
+                self.parse_expression(Precedence::Lowest)?
+            } else {
+                Expression::BooleanLiteral(true)
+            };
+
+            // eat semicolon at end of arm
+            self.iterator.next().map(drop);
+
+            // push arm onto vec
+            arms.push((value_expr, cond_expr))
+        };
+
+        Ok(if arms.len() == 0 {
+            Expression::PiecewiseBlock(vec![
+                (Expression::UndefinedLiteral, Expression::BooleanLiteral(true))
+            ])
+        } else {
+            Expression::PiecewiseBlock(arms)
+        })
+    }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, SyntaxError> {
         let operator = match self.iterator.next() {
             Some(token) => Operator(token, Location::Infix),
             _ => unreachable!()
@@ -124,7 +186,7 @@ impl<'a> Parser<'a> {
         Ok(expression)
     }
 
-    fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, Box<dyn Error>> {
+    fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, SyntaxError> {
         // println!("{:?}", self.iterator.peek());
         let expression = if let Some(tok) = self.iterator.peek() {
             match tok {
@@ -137,7 +199,11 @@ impl<'a> Parser<'a> {
                 | Token::Not
                 | Token::Minus
                 | Token::Undefined
-                | Token::LeftParen => self.parse_prefix_expression().map(Some),
+                | Token::LeftParen
+                | Token::Bar => self.parse_prefix_expression().map(Some),
+
+                // piecewise block
+                Token::LeftBrace => self.parse_piecewise_block_expression().map(Some),
 
                 // other
                 _ => Ok(None),
@@ -148,13 +214,19 @@ impl<'a> Parser<'a> {
 
         let mut expression = match expression {
             Ok(Some(expr)) => Ok(expr),
-            Ok(None) => Err("Invalid syntax.".into()),
+            Ok(None) => Err(format!("Invalid syntax: {:?}.", self.iterator.peek()).into()),
             Err(value) => Err(value)
         }?;
 
         loop {
             match self.iterator.peek() {
-                Some(&Token::Semicolon) | Some(&Token::RightParen) | Some(&Token::Comma) => break Ok(()),
+                Some(&Token::Semicolon)
+                | Some(&Token::RightParen)
+                | Some(&Token::Comma)
+                | Some(&Token::If)
+                | Some(&Token::Else)
+                | Some(&Token::RightBrace)
+                | Some(&Token::Bar) => break Ok(()),
                 Some(next_token) => {
                     let peek_precedence = Operator(next_token.clone(), Location::Infix).precedence()?;
                     if precedence < peek_precedence {
@@ -163,14 +235,14 @@ impl<'a> Parser<'a> {
                         break Ok(())
                     }
                 }
-                None => break Err::<_, Box<dyn Error>>("Unexpected end of token stream.".into())
+                None => break Err::<_, SyntaxError>("Unexpected end of token stream.".into())
             }
         }?;
 
         Ok(expression)
     }
 
-    fn parse_expression_statement(&mut self) -> Result<Statement, Box<dyn Error>> {
+    fn parse_expression_statement(&mut self) -> Result<Statement, SyntaxError> {
         let expression = match self.iterator.peek() {
             Some(_) => self.parse_expression(Precedence::Lowest),
             None => Err("Saw the abyss.".into())
@@ -185,7 +257,7 @@ impl<'a> Parser<'a> {
         Ok(Statement::ExpressionStatement { expression })
     }
 
-    fn parse_function_declaration(&mut self) -> Result<Statement, Box<dyn Error>> {
+    fn parse_function_declaration(&mut self) -> Result<Statement, SyntaxError> {
         use Statement::*;
         use Token::*;
 
@@ -238,7 +310,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_assignment_statement(&mut self) -> Result<Statement, Box<dyn Error>> {
+    fn parse_assignment_statement(&mut self) -> Result<Statement, SyntaxError> {
         use Statement::*;
         use Token::*;
 

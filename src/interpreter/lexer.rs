@@ -63,12 +63,19 @@ impl Iterator for LexerIterator<'_> {
                 },
                 ('=', Some('/')) => {
                     self.iterator.next();
-                    let ch = self.iterator.next();
-                    match ch {
+                    match self.iterator.next() {
                         Some('=') => NotEquals,
                         Some(ch) => Illegal(format!("=/{}", ch)),
                         None => Illegal("=/".into())
                     }
+                },
+                ('=', Some('>')) => {
+                    self.iterator.next();
+                    FatArrow
+                },
+                ('-', Some('>')) => {
+                    self.iterator.next();
+                    SkinnyArrow
                 },
                 ('<', Some('=')) => {
                     self.iterator.next();
@@ -80,8 +87,7 @@ impl Iterator for LexerIterator<'_> {
                 },
                 ('+', Some('/')) => {
                     self.iterator.next();
-                    let ch = self.iterator.next();
-                    match ch {
+                    match self.iterator.next() {
                         Some('-') => PlusMinus,
                         Some(ch) => Illegal(format!("+/{}", ch)),
                         None => Illegal("+/".into())
@@ -94,6 +100,23 @@ impl Iterator for LexerIterator<'_> {
                         Some('+') => MinusPlus,
                         Some(ch) => Illegal(format!("-/{}", ch)),
                         None => Illegal("-/".into())
+                    }
+                },
+                ('\\', Some('/')) => {
+                    self.iterator.next();
+                    Union
+                },
+                ('/', Some('\\')) => {
+                    self.iterator.next();
+                    Intersection
+                },
+                ('/', Some('_')) => {
+                    // this may clash with something like a/_b
+                    self.iterator.next();
+                    match self.iterator.next() {
+                        Some('\\') => SymmetricDifference,
+                        Some(ch) => Illegal(format!("/_{}", ch)),
+                        None => Illegal("/_".into())
                     }
                 },
                 ('?', _) => Question,
@@ -116,9 +139,10 @@ impl Iterator for LexerIterator<'_> {
                 (';', _) => Semicolon,
                 ('%', _) => Modulo,
                 ('!', _) => Bang,
+                ('|', _) => Bar,
                 // ('i', _) => Imaginary,  // check for Identifier(...) | Real(...) | Integer(...) then Identifier("i")
                 (_, _) => {
-                    if is_identifier(&ch) {
+                    if is_leading_identifier_char(&ch) {
                         let mut identifier = self.iterator.take_while_ref(|ch| !ch.is_whitespace() && is_identifier(ch))
                             .collect::<String>();
 
@@ -138,6 +162,12 @@ impl Iterator for LexerIterator<'_> {
                             "not" => Not,
                             "as" => As,
                             "in" => In,
+                            "for" => For,
+                            "where" => Where,
+                            "import" => Import,
+                            "use" => Use,
+                            "export" => Export,
+                            "pub" => Pub,
                             _ => Identifier(identifier)
                         }
                     } else if ch.is_numeric() || ch == '.' {
@@ -170,6 +200,12 @@ impl Iterator for LexerIterator<'_> {
     }
 }
 
+// beef up the identifier tokens to include numbers in reasonable places
 fn is_identifier(ch: &char) -> bool {
-    'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_'
+    'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z' || *ch == '_' || '0' <= *ch && *ch <= '9'
+}
+
+fn is_leading_identifier_char(ch: &char) -> bool {
+    // identifiers cannot have leading numbers or underscores
+    'a' <= *ch && *ch <= 'z' || 'A' <= *ch && *ch <= 'Z'
 }

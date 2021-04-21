@@ -10,9 +10,7 @@ use crate::ast::operator::Operator;
 
 macro_rules! parse {
     ($text:expr, $statements:expr) => {
-        let text = $text;
-        let parser = Parser::new(LexerIterator::new(text.chars().peekable()));
-        assert_eq!(parser.parse_program().unwrap(), $statements);
+        assert_eq!(Parser::new(LexerIterator::new($text.chars().peekable())).parse_program().unwrap(), $statements);
     };
 }
 
@@ -501,7 +499,124 @@ fn test_call_expression_in_prefix_expression() {
     );
 }
 
-// write tests for statements that should fail
+#[test]
+fn test_piecewise_block_expression() {
+    parse!(
+        "
+        {
+            0 if x < 0;
+            0.5 if x == 0;
+            1 else;
+        };
+        ",
+        vec![ExpressionStatement {
+            expression: Expression::PiecewiseBlock(
+                vec![
+                    (Expression::IntegerLiteral(0), Expression::Combination {
+                        left: Some(Box::new(Expression::Identifier("x".into()))),
+                        operator: Operator(Token::LessThan, Infix),
+                        right: Some(Box::new(Expression::IntegerLiteral(0)))
+                    }),
+                    (Expression::RealLiteral(0.5), Expression::Combination {
+                        left: Some(Box::new(Expression::Identifier("x".into()))),
+                        operator: Operator(Token::Equals, Infix),
+                        right: Some(Box::new(Expression::IntegerLiteral(0)))
+                    }),
+                    (Expression::IntegerLiteral(1), Expression::BooleanLiteral(true)),
+                ]
+            )
+        }]
+    )
+}
+
+#[test]
+fn test_piecewise_block_in_assignment_statement() {
+    parse!(
+        "\
+        let x = 2;
+        let heavisideX = {
+            0 if x < 0;
+            0.5 if x == 0;
+            1 else;
+        };
+        ",
+        vec![
+            Assignment {
+                identifier: "x".into(),
+                expression: Expression::IntegerLiteral(2)
+            },
+            Assignment {
+                identifier: "heavisideX".into(),
+                expression: Expression::PiecewiseBlock(
+                    vec![
+                        (Expression::IntegerLiteral(0), Expression::Combination {
+                            left: Some(Box::new(Expression::Identifier("x".into()))),
+                            operator: Operator(Token::LessThan, Infix),
+                            right: Some(Box::new(Expression::IntegerLiteral(0)))
+                        }),
+                        (Expression::RealLiteral(0.5), Expression::Combination {
+                            left: Some(Box::new(Expression::Identifier("x".into()))),
+                            operator: Operator(Token::Equals, Infix),
+                            right: Some(Box::new(Expression::IntegerLiteral(0)))
+                        }),
+                        (Expression::IntegerLiteral(1), Expression::BooleanLiteral(true)),
+                    ]
+                )
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_absolute_value() {
+    parse!(
+        "|-2 + -4|;",
+        vec![
+            ExpressionStatement {
+                expression: Expression::AbsoluteValue(Box::new(Expression::Combination {
+                    left: Some(Box::new(Expression::Combination {
+                            left: None,
+                            operator: Operator(Token::Minus, Prefix),
+                            right: Some(Box::new(Expression::IntegerLiteral(2)))
+                    })),
+                    operator: Operator(Token::Plus, Infix),
+                    right: Some(Box::new(Expression::Combination {
+                        left: None,
+                        operator: Operator(Token::Minus, Prefix),
+                        right: Some(Box::new(Expression::IntegerLiteral(4)))
+                    }))
+                }))
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_nested_abs_val() {
+    parse!(
+        "|-2 + |-4||;",
+        vec![
+            ExpressionStatement {
+                expression: Expression::AbsoluteValue(Box::new(Expression::Combination {
+                    left: Some(Box::new(Expression::Combination {
+                            left: None,
+                            operator: Operator(Token::Minus, Prefix),
+                            right: Some(Box::new(Expression::IntegerLiteral(2)))
+                    })),
+                    operator: Operator(Token::Plus, Infix),
+                    right: Some(Box::new(Expression::AbsoluteValue(Box::new(
+                        Expression::Combination {
+                            left: None,
+                            operator: Operator(Token::Minus, Prefix),
+                            right: Some(Box::new(Expression::IntegerLiteral(4)))
+                        }))
+                    ))
+                }))
+            }
+        ]
+    )
+}
+
 bad_parsing!(test_equality_in_assignment, "let value == 123;");
 
 bad_parsing!(test_missing_semicolon_in_assignment, "let value = 123");
@@ -536,3 +651,14 @@ bad_parsing!(test_bad_consecutive_tokens_in_call_expression, "foo(2 2, 1 1);");
 
 bad_parsing!(test_semicolon_in_grouped_statement, "(2 - 2;);");
 
+bad_parsing!(test_piecewise_block_expression_wo_semicolons, "{ x if x < 0 };");
+
+bad_parsing!(test_piecewise_block_expression_wo_semicolons_2, "{ x else };");
+
+bad_parsing!(test_piecewise_block_expression_with_two_else_arms, "{ x else; y else; };");
+
+bad_parsing!(test_if_outside_piecewise_block, "let x = 2 if true else 3;");
+
+bad_parsing!(test_else_outside_piecewise_block, "undefined else 2;");
+
+bad_parsing!(test_abs_val_never_closed, "|2 - 7;");

@@ -17,7 +17,7 @@ macro_rules! assert_evals {
                 left: None,
                 operator: Operator($token, Location::Prefix),
                 right: Some(Box::new($right))
-            }),
+            }).unwrap(),
             $obj
         );
     };
@@ -28,7 +28,7 @@ macro_rules! assert_evals {
                 left: Some(Box::new($left)),
                 operator: Operator($token, Location::Infix),
                 right: Some(Box::new($right))
-            }),
+            }).unwrap(),
             $obj
         );
     };
@@ -38,7 +38,7 @@ macro_rules! assert_evals {
             left: Some(Box::new($left)),
             operator: Operator($token, Location::Infix),
             right: Some(Box::new($right)),
-        });
+        }).unwrap();
         assert!(
             Boolean(-$tol <= val.clone() - $obj).and(&Boolean(val - $obj <= $tol)) == Boolean(true)
         );
@@ -620,7 +620,7 @@ fn test_assignment_set() {
         identifier: String::from("foobar"),
         expression: IntegerLiteral(123),
     };
-    let obj = env.eval_statement(&stmt);
+    let obj = env.eval_statement(&stmt).unwrap();
     assert_eq!(mem::discriminant(&obj), mem::discriminant(&Undefined));
 }
 
@@ -631,7 +631,7 @@ fn test_assignment_get() {
         identifier: String::from("foobar"),
         expression: IntegerLiteral(123),
     };
-    env.eval_statement(&stmt);
+    env.eval_statement(&stmt).unwrap();
 
     let stmt = Statement::ExpressionStatement {
         expression: Combination {
@@ -640,6 +640,46 @@ fn test_assignment_get() {
             right: Some(Box::new(IntegerLiteral(321))),
         },
     };
-    let obj = env.eval_statement(&stmt);
+    let obj = env.eval_statement(&stmt).unwrap();
     assert_eq!(obj, Integer(444));
+}
+
+#[test]
+fn test_abs_val() {
+    let mut env = Environment::new();
+    // |-2|;
+    let stmt = Statement::ExpressionStatement {
+        expression: AbsoluteValue(Box::new(Combination {
+            left: None,
+            operator: Operator(Token::Minus, Location::Prefix),
+            right: Some(Box::new(IntegerLiteral(2)))
+        })),
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj, Integer(2))
+}
+
+#[test]
+fn test_nested_abs_val() {
+    let mut env = Environment::new();
+    // |-2 + |-4||; 
+    let stmt = Statement::ExpressionStatement {
+        expression: AbsoluteValue(Box::new(Combination {
+            left: Some(Box::new(Combination {
+                    left: None,
+                    operator: Operator(Token::Minus, Location::Prefix),
+                    right: Some(Box::new(IntegerLiteral(2)))
+            })),
+            operator: Operator(Token::Plus, Location::Infix),
+            right: Some(Box::new(AbsoluteValue(Box::new(
+                Combination {
+                    left: None,
+                    operator: Operator(Token::Minus, Location::Prefix),
+                    right: Some(Box::new(IntegerLiteral(4)))
+                }))
+            ))
+        }))
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj, Integer(2))
 }

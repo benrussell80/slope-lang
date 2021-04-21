@@ -1,11 +1,15 @@
 use std::io;
 use std::io::prelude::*;
+use std::io::Error as IOError;
+use super::ast::environment::Environment;
+use super::ast::parser::Parser;
 use std::error::Error;
-use crate::interpreter::lexer::Lexer;
-use crate::ast::parser::Parser;
+use super::interpreter::lexer::LexerIterator;
+use super::ast::statement::Statement;
+use super::ast::object::Object;
 
 
-pub fn prompt(before: &str) -> Result<String, Box<dyn Error>> {
+pub fn prompt(before: &str) -> Result<String, IOError> {
     print!("{}", before);
     io::stdout().flush()?;
     let mut input = String::new();
@@ -13,9 +17,37 @@ pub fn prompt(before: &str) -> Result<String, Box<dyn Error>> {
     Ok(input)
 }
 
-pub struct Context;
 
-pub fn eval(input: &str, _: Context) {
-    let lexer = Lexer::new(input);
-    let parser = Parser::new(lexer.into_iter());
+pub fn exec(content: &str, env: &mut Environment) -> Result<String, Box<dyn Error>> {
+    let lexer = LexerIterator::new(content.chars().peekable());
+    let parser = Parser::new(lexer);
+    match parser.parse_program() {
+        Ok(stmts) => {
+            let mut response = String::new();
+            for (index, stmt) in stmts.iter().enumerate() {
+                let obj = env.eval_statement(&stmt)?;
+                match (obj, stmt) {
+                    (Object::Undefined, Statement::Assignment { .. })
+                    | (Object::Undefined, Statement::FunctionDeclaration { .. }) => {},
+                    (o, _) => {
+                        if index != 0 {
+                            response.push_str("\n");
+                        };
+                        response.push_str(&format!("{}", o))
+                    }
+                };
+            }
+            Ok(String::from(response))
+        },
+        Err(error) => Err(error.into())
+    }
+}
+
+#[macro_export]
+macro_rules! run {
+    ($code:expr) => {
+        use slope::repl::exec;
+        use slope::ast::environment::Environment;
+        println!("{}", exec($code, &mut Environment::new()).unwrap());
+    };
 }

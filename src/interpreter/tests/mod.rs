@@ -141,3 +141,57 @@ lex!(
         Eof
     ]
 );
+
+lex!(
+    lex_abs_val,
+    "|value|",
+    vec![
+        Bar,
+        Identifier("value".into()),
+        Bar,
+        Eof
+    ]
+);
+
+lex!(
+    lex_set_union,
+    r"A \/ B",
+    vec![
+        Identifier("A".into()),
+        Union,
+        Identifier("B".into()),
+        Eof
+    ]
+);
+
+lex!(
+    lex_set_intersection,
+    r"A /\ B",
+    vec![
+        Identifier("A".into()),
+        Intersection,
+        Identifier("B".into()),
+        Eof
+    ]
+);
+
+lex!(
+    lex_set_symmetric_difference,
+    r"A /_\ B",
+    vec![
+        Identifier("A".into()),
+        SymmetricDifference,
+        Identifier("B".into()),
+        Eof
+    ]
+);
+
+lex!(
+    lex_leading_underscore_in_identifier,
+    "_foobar",
+    vec![
+        Illegal("_".into()),
+        Identifier("foobar".into()),
+        Eof
+    ]
+);
