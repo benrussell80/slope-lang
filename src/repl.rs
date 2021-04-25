@@ -8,7 +8,6 @@ use super::interpreter::lexer::LexerIterator;
 use super::ast::statement::Statement;
 use super::ast::object::Object;
 
-
 pub fn prompt(before: &str) -> Result<String, IOError> {
     print!("{}", before);
     io::stdout().flush()?;
@@ -24,16 +23,17 @@ pub fn exec(content: &str, env: &mut Environment) -> Result<String, Box<dyn Erro
     match parser.parse_program() {
         Ok(stmts) => {
             let mut response = String::new();
-            for (index, stmt) in stmts.iter().enumerate() {
+            let mut count = 0;
+            for stmt in stmts.iter() {
                 let obj = env.eval_statement(&stmt)?;
                 match (obj, stmt) {
-                    (Object::Undefined, Statement::Assignment { .. })
-                    | (Object::Undefined, Statement::FunctionDeclaration { .. }) => {},
+                    (Object::Undefined, Statement::Assignment { .. }) | (Object::Undefined, Statement::FunctionDeclaration { .. }) => {},
                     (o, _) => {
-                        if index != 0 {
+                        if count != 0 {
                             response.push_str("\n");
                         };
-                        response.push_str(&format!("{}", o))
+                        response.push_str(&format!("{}", o));
+                        count += 1;
                     }
                 };
             }

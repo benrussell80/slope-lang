@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter, self};
+use std::hash::Hash;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub struct Parameter {
     pub name: String,
 }

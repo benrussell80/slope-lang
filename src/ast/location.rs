@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, self};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub enum Location {
     Prefix,
     Infix,

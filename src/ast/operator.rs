@@ -5,7 +5,7 @@ use super::precedence::Precedence;
 use super::errors::SyntaxError;
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub struct Operator(pub Token, pub Location);
 
 impl Display for Operator {
@@ -45,6 +45,7 @@ impl Operator {
             | Self(Token::Union, Location::Infix)
             | Self(Token::Intersection, Location::Infix)
             | Self(Token::SymmetricDifference, Location::Infix)
+            | Self(Token::SetDifference, Location::Infix) 
             
             | Self(Token::Bang, Location::Postfix) => true,
 
@@ -55,7 +56,7 @@ impl Operator {
     fn err_msg(&self) -> String {
         format!(
             "Invalid location `{}` for token `{}`.",
-            &self.0, &self.1
+            &self.1, &self.0
         )
     }
 
@@ -72,7 +73,7 @@ impl Operator {
         match self {
             // prefix operations
             Self(Token::Not, Location::Prefix) => Ok(Precedence::Not),
-            Self(Token::Minus, Location::Prefix) => Ok(Precedence::Not),
+            Self(Token::Minus, Location::Prefix) => Ok(Precedence::Negative),
 
             // infix operations
             Self(Token::And, Location::Infix)
@@ -85,8 +86,9 @@ impl Operator {
             | Self(Token::GreaterThanEquals, Location::Infix)
             | Self(Token::Equals, Location::Infix)
             | Self(Token::NotEquals, Location::Infix)
-            | Self(Token::Question, Location::Infix)
-            | Self(Token::In, Location::Infix) => Ok(Precedence::LessGreaterEqualCoa),
+            | Self(Token::Question, Location::Infix) => Ok(Precedence::LessGreaterEqualCoa),
+
+            Self(Token::In, Location::Infix) => Ok(Precedence::In),
 
             Self(Token::Plus, Location::Infix)
             | Self(Token::Minus, Location::Infix)
@@ -106,12 +108,13 @@ impl Operator {
             // set infix operations
             Self(Token::Union, Location::Infix)
             | Self(Token::Intersection, Location::Infix)
-            | Self(Token::SymmetricDifference, Location::Infix) => Ok(Precedence::Exponent),
+            | Self(Token::SymmetricDifference, Location::Infix)
+            | Self(Token::SetDifference, Location::Infix) => Ok(Precedence::Exponent),
 
             // postfix operations
             Self(Token::Bang, Location::Postfix) => Ok(Precedence::Postfix),
 
-            _ => Err(SyntaxError(self.err_msg()))
+            Self(token, loc) => Err(SyntaxError(format!("Precedence for token {} and location {} is not defined.", token, loc)))
         }
     }
 }

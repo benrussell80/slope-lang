@@ -1,11 +1,13 @@
+use std::mem;
 use super::errors::RuntimeError;
 use super::expression::Expression;
 use super::location::Location;
 use super::operator::Operator;
 use super::statement::Statement;
 use crate::interpreter::token::Token;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeSet};
 use super::object::Object;
+use super::modules::Module;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
@@ -19,6 +21,10 @@ impl Environment {
             bindings: HashMap::new(),
             parent: None
         }
+    }
+
+    pub fn import(&mut self, func: Module) -> Result<(), RuntimeError> {
+        func(self)
     }
 
     pub fn new_child(&self) -> Self {
@@ -89,22 +95,46 @@ impl Environment {
                 left: Some(left),
                 right: Some(right),
             } => match token {
-                Token::Plus => Ok(self.eval(left)? + self.eval(right)?),
-                Token::Multiply => Ok(self.eval(left)? * self.eval(right)?),
-                Token::Minus => Ok(self.eval(left)? - self.eval(right)?),
-                Token::Division => Ok(self.eval(left)? / self.eval(right)?),
+                Token::Plus => self.eval(left)? + self.eval(right)?,
+                Token::Multiply => self.eval(left)? * self.eval(right)?,
+                Token::Minus => self.eval(left)? - self.eval(right)?,
+                Token::Division => self.eval(left)? / self.eval(right)?,
                 Token::NotEquals => Ok(Object::Boolean(self.eval(left)? != self.eval(right)?)),
                 Token::Equals => Ok(Object::Boolean(self.eval(left)? == self.eval(right)?)),
                 Token::GreaterThan => Ok(Object::Boolean(self.eval(left)? > self.eval(right)?)),
                 Token::GreaterThanEquals => Ok(Object::Boolean(self.eval(left)? >= self.eval(right)?)),
-                Token::LessThan => Ok(Object::Boolean(self.eval(left)? < self.eval(right)?)),
-                Token::LessThanEquals => Ok(Object::Boolean(self.eval(left)? <= self.eval(right)?)),
-                Token::Exponent => Ok(self.eval(left)?.pow(&self.eval(right)?)),
+                Token::LessThan => {
+                    let left = self.eval(left)?;
+                    let right = self.eval(right)?;
+                    match (left, right) {
+                        (s1 @ Object::Set { .. }, s2 @ Object::Set { .. }) => {
+                            s1.is_proper_subset(&s2)
+                        },
+                        (obj1, obj2) => Ok(Object::Boolean(obj1 < obj2))
+                    }
+                },
+                Token::LessThanEquals => {
+                    let left = self.eval(left)?;
+                    let right = self.eval(right)?;
+                    match (left, right) {
+                        (s1 @ Object::Set { .. }, s2 @ Object::Set { .. }) => {
+                            s1.is_subset(&s2)
+                        },
+                        (obj1, obj2) => Ok(Object::Boolean(obj1 <= obj2))
+                    }
+                },
+                Token::Exponent => self.eval(left)?.pow(&self.eval(right)?),
                 Token::Question => Ok(self.eval(left)?.coalesce(&self.eval(right)?)),
-                Token::And => Ok(self.eval(left)?.and(&self.eval(right)?)),
-                Token::Or => Ok(self.eval(left)?.or(&self.eval(right)?)),
-                Token::Xor => Ok(self.eval(left)?.xor(&self.eval(right)?)),
-                Token::Modulo => Ok(self.eval(left)?.modulo(&self.eval(right)?)),
+                Token::And => self.eval(left)?.and(&self.eval(right)?),
+                Token::Or => self.eval(left)?.or(&self.eval(right)?),
+                Token::Xor => self.eval(left)?.xor(&self.eval(right)?),
+                Token::Modulo => self.eval(left)?.modulo(&self.eval(right)?),
+                Token::In => self.eval(left)?.in_(&self.eval(right)?),
+                Token::PlusMinus => self.eval(left)?.pm(&self.eval(right)?),
+                Token::Union => self.eval(left)?.set_union(&self.eval(right)?),
+                Token::SetDifference => self.eval(left)?.set_difference(&self.eval(right)?),
+                Token::SymmetricDifference => self.eval(left)?.set_symmetric_difference(&self.eval(right)?),
+                Token::Intersection => self.eval(left)?.set_intersection(&self.eval(right)?),
                 t => Err(RuntimeError::OperatorError(format!("Cannot use `{}` as an infix operator.", t))),
             },
             Combination {
@@ -112,8 +142,14 @@ impl Environment {
                 left: None,
                 right: Some(right),
             } => match token {
-                Token::Minus => Ok(-self.eval(right)?),
-                Token::Not => Ok(!self.eval(right)?),
+                Token::Minus => match self.eval(right) {
+                    Ok(obj) => -obj,
+                    Err(e) => Err(e)
+                },
+                Token::Not => match self.eval(right) {
+                    Ok(obj) => !obj,
+                    Err(e) => Err(e)
+                },
                 t => Err(RuntimeError::OperatorError(format!("Cannot use `{}` as a prefix operator.", t))),
             },
             Combination {
@@ -131,14 +167,17 @@ impl Environment {
                 let mut env = self.new_child();
                 
                 // get parameters from current definition
-                let func = self.eval(function)?;
-                if let Object::Function { parameters, expression } = func {
-                    for (p, v) in parameters.iter().zip(arguments.iter()) {
-                        env.set(&p.name, &self.eval(v)?)?;
-                    };
-                    env.eval(&expression)
-                } else {
-                    Err(RuntimeError::OperatorError(format!("Illegal call expression `{}`.", func)))
+                match self.eval(function)? {
+                    Object::Function { parameters, expression } => {
+                        for (p, v) in parameters.iter().zip(arguments.iter()) {
+                            env.set(&p.name, &self.eval(v)?)?;
+                        };
+                        env.eval(&expression)
+                    },
+                    Object::BuiltinFunction { body, .. } => {
+                        body(arguments.iter().map(|expr| self.eval(expr).unwrap()).collect())
+                    },
+                    func => Err(RuntimeError::OperatorError(format!("Illegal call expression `{}`.", func)))
                 }
             },
             PiecewiseBlock(arms) => {
@@ -163,12 +202,28 @@ impl Environment {
                     }
                 }
             },
-            AbsoluteValue(expr) => {
-                match self.eval(expr)? {
-                    Object::Integer(value)  => Ok(Object::Integer(value.abs())),
-                    Object::Real(value) => Ok(Object::Real(value.abs())),
-                    obj => Err(RuntimeError::OperatorError(format!("Cannot take absolute value of `{}`.", obj)))
+            AbsoluteValue(expr) => self.eval(expr)?.abs(),
+            SetLiteral(expressions) => {
+                let mut items = BTreeSet::new();
+                let mut kind = None;
+                for expr in expressions {
+                    let obj = self.eval(expr)?;
+                    if obj.is_undefined() {
+                        return Err(RuntimeError::TypeError("Cannot put undefined in a set.".into()))
+                    };
+                    if kind.is_none() {
+                        kind = Some(mem::discriminant(&obj));
+                    } else if let Some(disc) = kind {
+                        if mem::discriminant(&obj) != disc {
+                            return Err(RuntimeError::TypeError("Set literal members must all be the same type.".into()))
+                        }
+                    }
+                    items.insert(obj);
                 }
+                Ok(Object::Set {
+                    items,
+                    kind
+                })
             },
             Combination { .. } => panic!("Illegal expression."),
         }

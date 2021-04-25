@@ -1,4 +1,6 @@
 use std::fmt::{Display, Formatter, self};
+use std::hash::{Hash, Hasher};
+use rust_decimal::prelude::*;
 
 // token should capture line #, col start, and span
 #[derive(Debug, PartialEq, Clone)]
@@ -61,13 +63,24 @@ pub enum Token {
     Pub,
     FatArrow,
     SkinnyArrow,
+    CommentStart,
+    NewLine,
+}
+
+impl Hash for Token {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Token::Real(value) => Decimal::from_f64(*value).unwrap().hash(state),
+            rest => rest.hash(state)
+        }
+    }
 }
 
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         use Token::*;
         match self {
-            Illegal(value) => write!(f, "{}", value),
+            Illegal(value) => write!(f, "Illegal({})", value),
             Eof => write!(f, "EOF"),
             Identifier(value) => write!(f, "{}", value),
             Real(value) => write!(f, "{}", value),
@@ -125,6 +138,8 @@ impl Display for Token {
             Pub => write!(f, "pub"),
             FatArrow => write!(f, "=>"),
             SkinnyArrow => write!(f, "->"),
+            CommentStart => write!(f, "#"),
+            NewLine => write!(f, "\n"),
         }
     }
 }

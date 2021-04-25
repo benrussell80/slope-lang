@@ -56,7 +56,7 @@ lex!(
 
 lex!(
     random,
-    "/*-+=/=^[]{}();:.,3.0pi%2-1+/-/+ -/+",
+    "/ *-+=/=^[]{}();:.,3.0pi%2-1+/-/+ -/+",
     vec![
         Division,
         Multiply,
@@ -187,11 +187,84 @@ lex!(
 );
 
 lex!(
+    lex_set_difference,
+    r"A \ B",
+    vec![
+        Identifier("A".into()),
+        SetDifference,
+        Identifier("B".into()),
+        Eof
+    ]
+);
+
+lex!(
+    lex_less_than,
+    r"A < B",
+    vec![
+        Identifier("A".into()),
+        LessThan,
+        Identifier("B".into()),
+        Eof
+    ]
+);
+
+lex!(
+    lex_less_than_equals,
+    r"A <= B",
+    vec![
+        Identifier("A".into()),
+        LessThanEquals,
+        Identifier("B".into()),
+        Eof
+    ]
+);
+
+lex!(
     lex_leading_underscore_in_identifier,
     "_foobar",
     vec![
         Illegal("_".into()),
         Identifier("foobar".into()),
+        Eof
+    ]
+);
+
+lex!(
+    lex_set_literal,
+    "{ 1, 2, 3 };",
+    vec![
+        LeftBrace,
+        Integer(1),
+        Comma,
+        Integer(2),
+        Comma,
+        Integer(3),
+        RightBrace,
+        Semicolon,
+        Eof
+    ]
+);
+
+lex!(
+    comments_should_be_ignored,
+    r"A \ B  # hello there",
+    vec![
+        Identifier("A".into()),
+        SetDifference,
+        Identifier("B".into()),
+        Eof
+    ]
+);
+
+lex!(
+    comments_breaking_an_expression_should_be_ignored,
+    r"A + 
+    # hello comment
+    B",
+    vec![
+        Identifier("A".into()),
+        Plus,
+        Identifier("B".into()),
         Eof
     ]
 );

@@ -431,6 +431,23 @@ fn test_call_expression() {
 }
 
 #[test]
+fn test_call_expression_with_trailing_comma() {
+    parse!(
+        "foo(2 + 2, );",
+        vec![ExpressionStatement {
+            expression: Expression::Call {
+                function: Box::new(Expression::Identifier("foo".into())),
+                arguments: vec![Expression::Combination {
+                    left: Some(Box::new(Expression::IntegerLiteral(2))),
+                    operator: Operator(Token::Plus, Infix),
+                    right: Some(Box::new(Expression::IntegerLiteral(2)))
+                }]
+            }
+        }]
+    );
+}
+
+#[test]
 fn test_empty_call_expression() {
     parse!(
         "foo();",
@@ -612,6 +629,212 @@ fn test_nested_abs_val() {
                         }))
                     ))
                 }))
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_literal_expression() {
+    parse!(
+        "{ 1, 2, 3 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::SetLiteral(vec![
+                    Expression::IntegerLiteral(1),
+                    Expression::IntegerLiteral(2),
+                    Expression::IntegerLiteral(3),
+                ])
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_literal_expression_with_trailing_comma() {
+    parse!(
+        "{ 1, 2, 3, };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::SetLiteral(vec![
+                    Expression::IntegerLiteral(1),
+                    Expression::IntegerLiteral(2),
+                    Expression::IntegerLiteral(3),
+                ])
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_empty_set_literal() {
+    parse!(
+        "{ };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::SetLiteral(vec![])
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_one_element_set_literal() {
+    parse!(
+        "{ 1 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::SetLiteral(vec![
+                    Expression::IntegerLiteral(1)
+                ])
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_literal_with_reals() {
+    parse!(
+        "{ 1.0, 2.0, 3.0 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::SetLiteral(vec![
+                    Expression::RealLiteral(1.0),
+                    Expression::RealLiteral(2.0),
+                    Expression::RealLiteral(3.0),
+                ])
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_union() {
+    parse!(
+        r"{ 1.0, 2.0 } \/ { 3.0, 4.0 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(1.0),
+                        Expression::RealLiteral(2.0),
+                    ]))),
+                    operator: Operator(Token::Union, Infix),
+                    right: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(3.0),
+                        Expression::RealLiteral(4.0),
+                    ]))),
+                }
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_difference() {
+    parse!(
+        r"{ 1.0, 2.0 } \ { 2.0, 3.0 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(1.0),
+                        Expression::RealLiteral(2.0),
+                    ]))),
+                    operator: Operator(Token::SetDifference, Infix),
+                    right: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(2.0),
+                        Expression::RealLiteral(3.0),
+                    ]))),
+                }
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_symmetric_difference() {
+    parse!(
+        r"{ 1.0, 2.0 } /_\ { 2.0, 3.0 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(1.0),
+                        Expression::RealLiteral(2.0),
+                    ]))),
+                    operator: Operator(Token::SymmetricDifference, Infix),
+                    right: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(2.0),
+                        Expression::RealLiteral(3.0),
+                    ]))),
+                }
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_intersection() {
+    parse!(
+        r"{ 1.0, 2.0 } /\ { 3.0, 4.0 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(1.0),
+                        Expression::RealLiteral(2.0),
+                    ]))),
+                    operator: Operator(Token::Intersection, Infix),
+                    right: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(3.0),
+                        Expression::RealLiteral(4.0),
+                    ]))),
+                }
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_subset() {
+    parse!(
+        r"{ 1.0, 2.0 } < { 3.0, 4.0 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(1.0),
+                        Expression::RealLiteral(2.0),
+                    ]))),
+                    operator: Operator(Token::LessThan, Infix),
+                    right: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(3.0),
+                        Expression::RealLiteral(4.0),
+                    ]))),
+                }
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_set_proper_subset() {
+    parse!(
+        r"{ 1.0, 2.0 } <= { 3.0, 4.0 };",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(1.0),
+                        Expression::RealLiteral(2.0),
+                    ]))),
+                    operator: Operator(Token::LessThanEquals, Infix),
+                    right: Some(Box::new(Expression::SetLiteral(vec![
+                        Expression::RealLiteral(3.0),
+                        Expression::RealLiteral(4.0),
+                    ]))),
+                }
             }
         ]
     )

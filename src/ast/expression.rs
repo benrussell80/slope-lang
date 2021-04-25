@@ -1,5 +1,7 @@
 use std::fmt::{Display, Formatter, self};
 use super::operator::Operator;
+use std::hash::{Hash, Hasher};
+use rust_decimal::prelude::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -19,6 +21,17 @@ pub enum Expression {
     },
     PiecewiseBlock(Vec<(Expression, Expression)>),
     AbsoluteValue(Box<Expression>),
+    SetLiteral(Vec<Expression>),
+}
+
+impl Hash for Expression {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use Expression::*;
+        match self {
+            RealLiteral(value) => Decimal::from_f64(*value).unwrap().hash(state),
+            rest => rest.hash(state),
+        }
+    }
 }
 
 impl Display for Expression {
@@ -55,6 +68,15 @@ impl Display for Expression {
             },
             AbsoluteValue(expr) => {
                 write!(f, "|{}|", expr)
+            },
+            SetLiteral(expressions) => {
+                write!(f, "{{ {} }}", expressions.iter().fold(String::new(), |mut acc, member| {
+                    if !acc.is_empty() {
+                        acc.push_str(", ");
+                    };
+                    acc.push_str(&member.to_string());
+                    acc
+                }))
             }
         }
     }

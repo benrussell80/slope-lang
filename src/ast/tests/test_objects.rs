@@ -40,7 +40,7 @@ macro_rules! assert_evals {
             right: Some(Box::new($right)),
         }).unwrap();
         assert!(
-            Boolean(-$tol <= val.clone() - $obj).and(&Boolean(val - $obj <= $tol)) == Boolean(true)
+            Boolean((-$tol).unwrap() <= (val.clone() - $obj).unwrap()).and(&Boolean((val - $obj).unwrap() <= $tol)).unwrap() == Boolean(true)
         );
     };
 }
@@ -682,4 +682,245 @@ fn test_nested_abs_val() {
     };
     let obj = env.eval_statement(&stmt).unwrap();
     assert_eq!(obj, Integer(2))
+}
+
+#[test]
+fn test_set_literal_assignment() {
+    let mut env = Environment::new();
+    let stmt = Statement::Assignment {
+        identifier: String::from("foobar"),
+        expression: SetLiteral(vec![
+            IntegerLiteral(1),
+            IntegerLiteral(2),
+            IntegerLiteral(3),
+        ]),
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(mem::discriminant(&obj), mem::discriminant(&Undefined));
+}
+
+#[test]
+fn test_set_literal_assignment_with_reals() {
+    let mut env = Environment::new();
+    let stmt = Statement::Assignment {
+        identifier: String::from("foobar"),
+        expression: SetLiteral(vec![
+            RealLiteral(1.0),
+            RealLiteral(2.0),
+            RealLiteral(3.0),
+        ]),
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(mem::discriminant(&obj), mem::discriminant(&Undefined));
+}
+
+#[test]
+#[should_panic]
+fn test_set_literal_with_different_types() {
+    let mut env = Environment::new();
+    let stmt = Statement::Assignment {
+        identifier: String::from("foobar"),
+        expression: SetLiteral(vec![
+            RealLiteral(1.0),
+            BooleanLiteral(true),
+        ]),
+    };
+    env.eval_statement(&stmt).unwrap();
+}
+
+#[test]
+#[should_panic]
+fn test_set_literal_with_undefined() {
+    let mut env = Environment::new();
+    let stmt = Statement::Assignment {
+        identifier: String::from("foobar"),
+        expression: SetLiteral(vec![
+            UndefinedLiteral
+        ]),
+    };
+    env.eval_statement(&stmt).unwrap();
+}
+
+#[test]
+fn test_set_of_sets() {
+    let mut env = Environment::new();
+    let stmt = Statement::Assignment {
+        identifier: String::from("foobar"),
+        expression: SetLiteral(vec![
+            SetLiteral(vec![
+                IntegerLiteral(1)
+            ]),
+            SetLiteral(vec![
+                IntegerLiteral(2)
+            ])
+        ]),
+    };
+    env.eval_statement(&stmt).unwrap();
+    assert_eq!("{ { 1 }, { 2 } }", env.get("foobar").unwrap().to_string());
+}
+
+#[test]
+fn test_set_of_duplicate_integers() {
+    let mut env = Environment::new();
+    let stmt = Statement::Assignment {
+        identifier: String::from("foobar"),
+        expression: SetLiteral(vec![
+            SetLiteral(vec![
+                IntegerLiteral(1)
+            ]),
+            SetLiteral(vec![
+                IntegerLiteral(1)
+            ])
+        ]),
+    };
+    env.eval_statement(&stmt).unwrap();
+    assert_eq!("{ { 1 } }", env.get("foobar").unwrap().to_string());
+}
+
+#[test]
+fn test_integer_in_set() {
+    let mut env = Environment::new();
+    let stmt = Statement::ExpressionStatement {
+        expression: Combination {
+            left: Some(Box::new(IntegerLiteral(1))),
+            operator: Operator(Token::In, Location::Infix),
+            right: Some(Box::new(SetLiteral(vec![
+                IntegerLiteral(1),
+                IntegerLiteral(2),
+                IntegerLiteral(3),
+            ])))
+        }
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj, Boolean(true));
+}
+
+#[test]
+fn test_set_union() {
+    let mut env = Environment::new();
+    let stmt = Statement::ExpressionStatement {
+        expression: Combination {
+            left: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+            ]))),
+            operator: Operator(Token::Union, Location::Infix),
+            right: Some(Box::new(SetLiteral(vec![
+                RealLiteral(3.1),
+                RealLiteral(4.1),
+            ]))),
+        }
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj.to_string(), "{ 1.1, 2.1, 3.1, 4.1 }");
+}
+
+#[test]
+fn test_set_difference() {
+    let mut env = Environment::new();
+    let stmt = Statement::ExpressionStatement {
+        expression: Combination {
+            left: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+            ]))),
+            operator: Operator(Token::SetDifference, Location::Infix),
+            right: Some(Box::new(SetLiteral(vec![
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+            ]))),
+        }
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj.to_string(), "{ 1.1 }");
+}
+
+#[test]
+fn test_set_intersection() {
+    let mut env = Environment::new();
+    let stmt = Statement::ExpressionStatement {
+        expression: Combination {
+            left: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+            ]))),
+            operator: Operator(Token::Intersection, Location::Infix),
+            right: Some(Box::new(SetLiteral(vec![
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+            ]))),
+        }
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj.to_string(), "{ 2.1 }");
+}
+
+#[test]
+fn test_set_symmetric_difference() {
+    let mut env = Environment::new();
+    let stmt = Statement::ExpressionStatement {
+        expression: Combination {
+            left: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+            ]))),
+            operator: Operator(Token::SymmetricDifference, Location::Infix),
+            right: Some(Box::new(SetLiteral(vec![
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+                RealLiteral(4.1),
+            ]))),
+        }
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj.to_string(), "{ 1.1, 4.1 }");
+}
+
+#[test]
+fn test_set_subset() {
+    let mut env = Environment::new();
+    let stmt = Statement::ExpressionStatement {
+        expression: Combination {
+            left: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+            ]))),
+            operator: Operator(Token::LessThanEquals, Location::Infix),
+            right: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+                RealLiteral(4.1),
+                RealLiteral(5.1),
+            ]))),
+        }
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj, Boolean(true));
+}
+
+#[test]
+fn test_set_proper_subset() {
+    let mut env = Environment::new();
+    let stmt = Statement::ExpressionStatement {
+        expression: Combination {
+            left: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+            ]))),
+            operator: Operator(Token::LessThan, Location::Infix),
+            right: Some(Box::new(SetLiteral(vec![
+                RealLiteral(1.1),
+                RealLiteral(2.1),
+                RealLiteral(3.1),
+                RealLiteral(4.1),
+                RealLiteral(5.1),
+            ]))),
+        }
+    };
+    let obj = env.eval_statement(&stmt).unwrap();
+    assert_eq!(obj, Boolean(true));
 }

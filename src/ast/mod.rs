@@ -8,6 +8,7 @@ pub mod operator;
 pub mod location;
 pub mod precedence;
 pub mod object;
+pub mod modules;
 
 #[cfg(test)]
 pub mod tests;

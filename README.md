@@ -41,8 +41,9 @@ The basic arithmetic operations are defined syntactically as follows:
 - `^`: exponentiation
 - `%`: modulo
 
-Slope is also defined to allow common mathematical operations not usually found in other programming languages such as:
+Slope is also comes with many common mathematical operations out of the box not usually found in other programming languages such as:
 - `|<number>|`: absolute value
+- sets of sets
 - more to come; see [the future](#The-Future)
 
 ### Functions
@@ -84,10 +85,7 @@ Piecewise blocks are also nestable. For example,
 let x = randomNumberBetween(0, 10);
 
 let x_is_2 = {
-    {
-        true if x == 2;
-        false else;
-    } if x % 2 == 0;
+    { true if x == 2; false else; } if x % 2 == 0;
     false else;
 };
 ```
@@ -143,15 +141,15 @@ To check if any value is undefined use the `?` infix operator. The `?` (called q
 fn line_with_hole(x) = (x - 1) * (x + 2) / (x + 2);
 let line_with_hole = line(-2) ? 0;
 ```
-<!-- 
+
 ### Sets
-As alluded to previously, "types" are manifested as sets in Slope (just as they are in mathematics). Sets can be defined to contain any of set of numbers/sets/etc. available in Slope. Set contents must all be the same type, however.
+As alluded to previously, "types" are manifested as sets in Slope (just as they are in mathematics). Sets can be defined to contain any of set of numbers/sets/etc (sets of functions are untested) available in Slope. Set contents must all be the same type, however.
 
 #### Set Literals
 Sets can be explicitly created as such:
-```rust
-let S = { 1, 2, 3 };
-let PowerSetOfS = {
+```
+let s = { 1, 2, 3 };
+let power_set_of_s = {
     {},
     { 1 }, { 2 }, { 3 },
     { 1, 2 }, { 1, 3 }, { 2, 3 },
@@ -159,76 +157,80 @@ let PowerSetOfS = {
 };
 ```
 
+#### Checking Existence
+To determine if a value exists in a set use the `in` infix operator:
+```
+let perfect_squares = { 1, 4, 9, 16, 25, 36, 49 };
+49 in perfect_squares == true;
+```
+
+#### Checking If a Set is a Subset of Another Set
+In math, often it is important to know if a set is a subset of another set. Slope re-uses `<=` and `<` for the subset and proper subset operators. For example:
+
+```
+{}          <  { 1, 2, 3 } == true;
+{ 1 }       <= { 1, 2, 3 } == true;
+{ 1, 2, 3 } <= { 1, 2, 3 } == true;
+{ 1, 2, 3 } <  { 1, 2, 3 } == false;
+```
+
+#### Union
+```
+let a = { 1, 2, 3 };
+let b = { 3, 4 };
+
+a \/ b == { 1, 2, 3, 4 };
+```
+
+#### Intersection
+```
+let a = { 1, 2, 3 };
+let b = { 3, 4 };
+
+a /\ b == { 3 };
+```
+
+#### Difference (Relative Complement)
+```
+let a = { 1, 2, 3 };
+let b = { 3, 4 };
+
+a \ b == { 1, 2 };
+```
+
+#### Symmetric Difference
+```
+let a = { 1, 2, 3 };
+let b = { 3, 4 };
+
+a /_\ b == { 1, 2, 4 };
+```
+
+
+<!-- 
 #### Set-Builder Notation
 Sets can also be created implicitly using set builder notation commonly used in mathematics.
-```rust
+```
 let Evens = { i in Z: i % 2 == 0 };
 let Odds = { i in Z: i % 2 =/= 0 };
 let PerfectSquares = { i in N: i ^ 0.5 % 1 == 0};
 let OddPerfectSquares = { i in PefectSquares: i % 2 =/= 0 };
 ```
 
-#### Checking Existence
-To determine if a value exists in a set use the `in` infix operator:
-```rust
-let foundIt = 49 in PerfectSquares;  // true
-```
 
 Under the hood, set-builders will have a superset or universal set (the Reals, the Integers, the Naturals) and a set of conditions that a potential member must pass in order for `in` to return `true`. This condition-based existence is based on the implementation of Python's `range` function. See [this SO post for inspiration](https://stackoverflow.com/questions/30081275/why-is-1000000000000000-in-range1000000000000001-so-fast-in-python-3).
 
 In the future, notation such as
-```rust
+```
 let PerfectSquares = { i ^ 2 for i in N };
 ```
 will be accepted and preferred (this may required invertible functions, however).
 
-#### Checking If a Set is a Subset of Another Set
-In math, often it is important to know if a set is a subset of another set. Slope re-uses `<=` and `<` for the subset and proper subset operators. For example:
-
-```rust
-{ 1 } <= { 1, 2, 3 };  // true
-{ 1, 2, 3} <= { 1, 2, 3 };  // true
-{ 1, 2, 3} < { 1, 2, 3 };  // false
-{} < { 1, 2, 3 };  // true; empty set is a subset of every set
-```
-
-#### Union
-```rust
-let A = { 1, 2, 3 };
-let B = { 3, 4 };
-
-A \/ B == { 1, 2, 3, 4 };
-```
-
-#### Intersection
-```rust
-let A = { 1, 2, 3 };
-let B = { 3, 4 };
-
-A /\ B == { 3 };
-```
-
-#### Difference (Relative Complement)
-```rust
-let A = { 1, 2, 3 };
-let B = { 3, 4 };
-
-A \ B == { 1, 2 };
-```
-
-#### Symmetric Difference
-```rust
-let A = { 1, 2, 3 };
-let B = { 3, 4 };
-
-A /_\ B == { 1, 2, 4 };  // equivalent to `xor` for booleans
-```
-
 #### Complement
 ```cpp
-let A = { 1, 2, 3 };  // set of Z's
+let a = { 1, 2, 3 };  // set of Z's
 
-\ A == { i in Z: i not in A)};
+\ a == { i in Z: i not in a)};
 ```
 
 #### Multi-Sets
@@ -248,6 +250,8 @@ The following
 - `:`: colon used for type annotations
 - `!`: postfix operator used for factorial
 - `i`: postfix operator used for complex numbers (still okay to use in `let i = 1;`, for example; similar to python's use of `1j`)
+<!-- - `R`, `N`, `Z`, `Q`, `C`: the sets of the real, natural, integer, rational, and complex numbers -->
+<!-- - `sum`, `product`, `min`, `max`: built-in functions on sets -->
 
 ## About
 Slope's interpreter is written in Rust, and created by following Thorsten Ball's [book](https://interpreterbook.com/).
@@ -258,22 +262,27 @@ Slope's interpreter is written in Rust, and created by following Thorsten Ball's
 - [ ] Naturals
 - [ ] Decimals (possibly to replace floats for Reals)
 - [ ] Complex numbers
-- [ ] Set literals
+- [x] Set literals
 - [ ] Set builders
 - [ ] Named set members (similar to enums)
 - [ ] Tuples (e.g. ordered pairs)
 - [ ] Vectors and matrices
 - [ ] Vector and matrix builders
+- [ ] Multi-sets
+- [ ] Graphs
 
 #### Operations
 - [ ] Factorial
-- [ ] Plus-or-minus (and minus-or-plus)
-- [ ] Set existence (`in`)
-- [ ] Set difference
-- [ ] Set union
-- [ ] Set intersections
-- [ ] Set symmetric difference
-- [ ] Subset and proper subset (`<=`, `<` for sets)
+- [x] Plus-or-minus
+- [ ] Minus-or-plus
+- [x] Set containment (`in`)
+- [x] Set difference
+- [x] Set union
+- [x] Set intersection
+- [x] Set symmetric difference
+- [x] Set size/norm (using abs val)
+- [x] Subset and proper subset (`<=`, `<` for sets)
+- [ ] Type conversion
 
 ##### Longshots
 These would be amazing but might never happen.
@@ -282,11 +291,14 @@ These would be amazing but might never happen.
 
 #### Features
 - [ ] Increased test coverage, automated workflows
+- [ ] Line numbers in syntax error and backtraces in runtime errors
 - [ ] Web-based REPL
 - [ ] Distributed extensions for:
     - [ ] Syntax highlighting
-    - [ ] Font ligatures for various operations (`=/=`, `\/`, `/\`, `/_\`)
-- [ ] Comments and docstrings
+    - [ ] Font ligatures for various operations (`≠` for `=/=`, `∪` for `\/`, `∩` for `/\`, `Δ` for `/_\`, `±` for `+/-`)
+- [x] Comments
+- [ ] Docstrings
+- [ ] Export functions to LaTeX
 - [ ] Language documentation and specification
 - [ ] Function literals
 - [ ] Type annotations

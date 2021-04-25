@@ -9,6 +9,7 @@ pub mod ast;
 
 use ast::environment::Environment;
 use repl::exec;
+use ast::modules::{set_builtins, math_constants_builtins};
 
 
 #[derive(FromArgs, Debug)]
@@ -44,6 +45,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // setup environment (memory, etc.)
     let mut env = Environment::new();
+    env.import(set_builtins)?;
+    env.import(math_constants_builtins)?;
 
     // read
     if let Some(path) = config.file {
