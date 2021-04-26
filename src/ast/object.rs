@@ -100,6 +100,29 @@ impl Object {
         mem::discriminant(self) == mem::discriminant(&Object::Undefined)
     }
 
+    pub fn factorial(&self) -> Result<Self, RuntimeError> {
+        fn fact(num: &i64) -> i64 {
+            if num < &0 {
+                panic!("Expected positive integer.")
+            } else if num == &0 {
+                1
+            } else {
+                num * fact(&(num - 1))
+            }
+        }
+        use Object::*;
+        match self {
+            Integer(value) => {
+                if value < &0 {
+                    Err(RuntimeError::OperatorError(format!("Cannot use factorial on a negative integer {}.", value)))
+                } else {
+                    Ok(Integer(fact(value)))
+                }
+            },
+            obj => Err(RuntimeError::TypeError(format!("Cannot use factorial on {} (expected a positive integer or zero).", obj)))
+        }
+    }
+
     pub fn pow(&self, rhs: &Self) -> Result<Self, RuntimeError> {
         use Object::*;
         if let Real(num) = match (self, rhs) {

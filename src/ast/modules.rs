@@ -5,16 +5,15 @@ use super::parameter::Parameter;
 use std::f64::consts::{E, PI};
 
 // a module is just a rust function that edits the current environment in some way
-pub type Module = fn(&mut Environment) -> Result<(), RuntimeError>;
+pub type Module = fn(&mut Environment);
 
 // define some built-in "modules"
-pub fn math_constants_builtins(env: &mut Environment) -> Result<(), RuntimeError> {
-    env.set(&"PI".to_string(), &Object::Real(PI))?;
-    env.set(&"E".to_string(), &Object::Real(E))?;
-    Ok(())
+pub fn math_constants_builtins(env: &mut Environment) {
+    env.set(&"PI".to_string(), &Object::Real(PI)).unwrap();
+    env.set(&"E".to_string(), &Object::Real(E)).unwrap();
 }
 
-pub fn set_builtins(env: &mut Environment) -> Result<(), RuntimeError> {
+pub fn set_builtins(env: &mut Environment) {
     env.set(&"max".to_string(), &Object::BuiltinFunction {
         parameters: vec![Parameter { name: "s".to_string() }],
         body: |args| {
@@ -31,7 +30,7 @@ pub fn set_builtins(env: &mut Environment) -> Result<(), RuntimeError> {
                 num => Err(RuntimeError::OperatorError(format!("Expected 1 argument to `max` got {}.", num)))
             }
         }
-    })?;
+    }).unwrap();
 
     env.set(&"min".to_string(), &Object::BuiltinFunction {
         parameters: vec![Parameter { name: "s".to_string() }],
@@ -49,7 +48,7 @@ pub fn set_builtins(env: &mut Environment) -> Result<(), RuntimeError> {
                 num => Err(RuntimeError::OperatorError(format!("Expected 1 argument to `min` got {}.", num)))
             }
         }
-    })?;
+    }).unwrap();
 
     env.set(&"sum".to_string(), &Object::BuiltinFunction {
         parameters: vec![Parameter { name: "s".to_string() }],
@@ -80,7 +79,7 @@ pub fn set_builtins(env: &mut Environment) -> Result<(), RuntimeError> {
                 num => Err(RuntimeError::OperatorError(format!("Expected 1 argument to `sum` got {}.", num)))
             }
         }
-    })?;
+    }).unwrap();
 
     env.set(&"product".to_string(), &Object::BuiltinFunction {
         parameters: vec![Parameter { name: "s".to_string() }],
@@ -111,7 +110,7 @@ pub fn set_builtins(env: &mut Environment) -> Result<(), RuntimeError> {
                 num => Err(RuntimeError::OperatorError(format!("Expected 1 argument to `product` got {}.", num)))
             }
         }
-    })?;
+    }).unwrap();
 
     // env.set(&"power_set".to_string(), &Object::BuiltinFunction {
     //     parameters: vec![Parameter { name: "s".to_string() }],
@@ -127,6 +126,4 @@ pub fn set_builtins(env: &mut Environment) -> Result<(), RuntimeError> {
     //         }
     //     }
     // })?;
-
-    Ok(())
 }

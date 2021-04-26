@@ -1,11 +1,19 @@
 # Slope
 Slope is a programming language with a syntax matching mathematical notation as closely as reasonably possible.
 
+## Installation and Usage
+```
+git clone <this repo>
+cargo test  # see issues if any tests fail
+cargo run --example <file from examples dir>
+cargo run
+```
+
 ## The Basics
 Slope is intended to seamlessly bridge the gap between math notation learned in school, and programming syntax. To that end, many opinionated choices have gone into Slope's implementation. That being said, Slope's developers will always be open to hearing what could be done better. Nonetheless, Slope is not a general purpose programming language.
 
 ### Values
-Numbers, and collections thereof, are the only "types" in Slope; there are no string-like types, pointers, dictionaries, etc.
+Numbers, and collections thereof, are the only "types" in Slope; there are no string-like types, pointers, dictionaries, or maps.
 
 Values are stored using the following syntax.
 
@@ -15,15 +23,7 @@ let pi = 3.14;
 
 This will store the value `3.14` of the type real to `pi`.
 
-Currently, the supported types are:
-- Reals
-- Integers
-- Booleans
-- Functions
-
-For information about future types, see [the future intended work](#The-Future).
-
-All values are constant. There exists no syntax for updating a value. Therefore, this is not possible:
+All values are constant (immutable). There exists no syntax for updating a value. Therefore, this is not possible:
 
 ```
 let pi = 3.14;
@@ -31,6 +31,26 @@ pi = 3;
 ```
 
 This program will result in a syntax error.
+
+Values with the same name cannot be re-bound either.
+
+```
+let pi = 3.14;
+let pi = 3;
+```
+
+This program will result in a runtime error.
+
+Currently, the supported "types" are:
+- Reals
+- Integers
+- Booleans
+- Functions
+- Sets
+
+These types are actually sets. A real number's "type" is the set of real numbers. Just like in math a member of a subset of a set is a member of that set. Or, `if num in A and A <= B then num in B`. In Slope, this idea has been extrapolated to programming. For example, a function with an argument defined to be in the set of real numbers can accept an integer (because the set of integers is a subset of the set of real numbers). Typing in general, however, is still in its infancy.
+
+For information about future types and features see [the future intended work](#The-Future).
 
 ### Arithmetic
 The basic arithmetic operations are defined syntactically as follows:
@@ -44,6 +64,7 @@ The basic arithmetic operations are defined syntactically as follows:
 Slope is also comes with many common mathematical operations out of the box not usually found in other programming languages such as:
 - `|<number>|`: absolute value
 - sets of sets
+- `!` notation for factorial
 - more to come; see [the future](#The-Future)
 
 ### Functions
@@ -143,7 +164,7 @@ let line_with_hole = line(-2) ? 0;
 ```
 
 ### Sets
-As alluded to previously, "types" are manifested as sets in Slope (just as they are in mathematics). Sets can be defined to contain any of set of numbers/sets/etc (sets of functions are untested) available in Slope. Set contents must all be the same type, however.
+As alluded to previously, "types" are manifested as sets in Slope (just as they are in mathematics). Sets can be defined to contain any set of numbers/sets/etc (sets of functions are untested) available in Slope. Set contents must all be the same type, however.
 
 #### Set Literals
 Sets can be explicitly created as such:
@@ -206,6 +227,25 @@ let b = { 3, 4 };
 a /_\ b == { 1, 2, 4 };
 ```
 
+### Errors
+The current implementation of Slope has two kinds of errors: SyntaxError and RuntimeError. Errors are not currently recoverable/handle-able.
+
+A SyntaxError is exactly what it sounds like.
+
+A RuntimeError has three variants:
+- NameError
+- OperatorError
+- TypeError
+
+A NameError is raised when a value is read before being initialized.
+
+An OperatorError occurs when an operator is used on one or more values that do not have defined behavior for that operation. For example, `undefined ^ 5`.
+
+A TypeError occurs in a few distinct cases:
+- When a piecewise arm's condition does not return a boolean
+- When values of differing types are added to a set
+- When a built-in function is called on a value of the wrong type (e.g. `max(2)`)
+
 
 <!-- 
 #### Set-Builder Notation
@@ -238,17 +278,12 @@ Currently, sets only allow one instance of any given value. Multi-sets and their
 
 ### Reserved Yet Unused Symbols, Symbol Combinations and Keywords
 The following
-- `\`: set difference
-- `\/`: set union
-- `/\`: set intersection
-- `/_\`: set symmetric difference
 - `->`, `=>`: arrows to possibly be used for function declaration
 - `for`: keyword to be used in set-builders
 - `where`: keyword to be used in matrix-builders
 - `not in`: not in operation used for sets
 - `import`, `use`, `export`, `pub`: keywords possibly to be used in modules
 - `:`: colon used for type annotations
-- `!`: postfix operator used for factorial
 - `i`: postfix operator used for complex numbers (still okay to use in `let i = 1;`, for example; similar to python's use of `1j`)
 <!-- - `R`, `N`, `Z`, `Q`, `C`: the sets of the real, natural, integer, rational, and complex numbers -->
 <!-- - `sum`, `product`, `min`, `max`: built-in functions on sets -->
@@ -263,16 +298,16 @@ Slope's interpreter is written in Rust, and created by following Thorsten Ball's
 - [ ] Decimals (possibly to replace floats for Reals)
 - [ ] Complex numbers
 - [x] Set literals
-- [ ] Set builders
+- [ ] Set builders: declarative ways to instantiate sets (e.g. `{ i in N: 0 <= i and i < 10 }`)
 - [ ] Named set members (similar to enums)
 - [ ] Tuples (e.g. ordered pairs)
 - [ ] Vectors and matrices
 - [ ] Vector and matrix builders
 - [ ] Multi-sets
-- [ ] Graphs
+- [ ] Graphs (nodes and edges)
 
 #### Operations
-- [ ] Factorial
+- [x] Factorial
 - [x] Plus-or-minus
 - [ ] Minus-or-plus
 - [x] Set containment (`in`)
@@ -298,7 +333,7 @@ These would be amazing but might never happen.
     - [ ] Font ligatures for various operations (`≠` for `=/=`, `∪` for `\/`, `∩` for `/\`, `Δ` for `/_\`, `±` for `+/-`)
 - [x] Comments
 - [ ] Docstrings
-- [ ] Export functions to LaTeX
+- [ ] Export function definitions to LaTeX
 - [ ] Language documentation and specification
 - [ ] Function literals
 - [ ] Type annotations

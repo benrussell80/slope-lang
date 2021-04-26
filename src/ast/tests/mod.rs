@@ -840,6 +840,46 @@ fn test_set_proper_subset() {
     )
 }
 
+#[test]
+fn test_factorial() {
+    parse!(
+        "2! + 2;",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::Combination {
+                        left: Some(Box::new(Expression::IntegerLiteral(2))),
+                        operator: Operator(Token::Bang, Postfix),
+                        right: None,
+                    })),
+                    operator: Operator(Token::Plus, Infix),
+                    right: Some(Box::new(Expression::IntegerLiteral(2)))
+                }
+            }
+        ]
+    )
+}
+
+#[test]
+fn test_factorial_grouped() {
+    parse!(
+        "(2 + 2)!;",
+        vec![
+            ExpressionStatement {
+                expression: Expression::Combination {
+                    left: Some(Box::new(Expression::Combination {
+                        left: Some(Box::new(Expression::IntegerLiteral(2))),
+                        operator: Operator(Token::Plus, Infix),
+                        right: Some(Box::new(Expression::IntegerLiteral(2)))
+                    })),
+                    operator: Operator(Token::Bang, Postfix),
+                    right: None,
+                }
+            }
+        ]
+    )
+}
+
 bad_parsing!(test_equality_in_assignment, "let value == 123;");
 
 bad_parsing!(test_missing_semicolon_in_assignment, "let value = 123");

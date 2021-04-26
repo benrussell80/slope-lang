@@ -7,7 +7,7 @@ use super::statement::Statement;
 use crate::interpreter::token::Token;
 use std::collections::{HashMap, BTreeSet};
 use super::object::Object;
-use super::modules::Module;
+use super::modules::{Module, math_constants_builtins, set_builtins};
 
 #[derive(Debug, Clone)]
 pub struct Environment {
@@ -17,13 +17,16 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Self {
-        Self {
+        let mut env = Self {
             bindings: HashMap::new(),
             parent: None
-        }
+        };
+        env.import(set_builtins);
+        env.import(math_constants_builtins);
+        env
     }
 
-    pub fn import(&mut self, func: Module) -> Result<(), RuntimeError> {
+    pub fn import(&mut self, func: Module) {
         func(self)
     }
 
@@ -153,10 +156,11 @@ impl Environment {
                 t => Err(RuntimeError::OperatorError(format!("Cannot use `{}` as a prefix operator.", t))),
             },
             Combination {
-                left: Some(_left),
+                left: Some(left),
                 operator: Operator(token, Location::Postfix),
                 right: None,
             } => match token {
+                Token::Bang => self.eval(left)?.factorial(),
                 t => Err(RuntimeError::OperatorError(format!("Cannot use `{}` as a postfix operator.", t))),
             },
             Call {

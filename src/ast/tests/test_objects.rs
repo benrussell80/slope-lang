@@ -21,6 +21,17 @@ macro_rules! assert_evals {
             $obj
         );
     };
+    (postfix $left:expr, $token:expr, $obj:expr) => {
+        // prefix expression
+        assert_eq!(
+            Environment::new().eval(&Combination {
+                left: Some(Box::new($left)),
+                operator: Operator($token, Location::Postfix),
+                right: None,
+            }).unwrap(),
+            $obj
+        );
+    };
     ($left:expr, $token:expr, $right:expr, $obj:expr) => {
         // infix expression
         assert_eq!(
@@ -923,4 +934,13 @@ fn test_set_proper_subset() {
     };
     let obj = env.eval_statement(&stmt).unwrap();
     assert_eq!(obj, Boolean(true));
+}
+
+#[test]
+fn test_factorial() {
+    assert_evals!(
+        postfix IntegerLiteral(4),
+        Token::Bang,
+        Integer(24)
+    )
 }

@@ -236,25 +236,18 @@ impl<I: Iterator<Item=Token>> Parser<I> {
         Ok(expression)
     }
 
-    // fn parse_postfix_expression(&mut self) -> Result<Expression, SyntaxError> {
+    fn parse_postfix_expression(&mut self, expression: Expression) -> Result<Expression, SyntaxError> {
+        // eat ! token
+        if self.iterator.next_if_eq(&Token::Bang).is_none() {
+            return Err("Expected ! as a postfix operator.".into())
+        }
 
-    // }
-
-    // fn parse_comment(&mut self, eat_token: bool) -> Result<(), SyntaxError> {
-    //     // eat CommentStart
-    //     if eat_token {
-    //         self.iterator.next_if_eq(&Token::CommentStart).map(drop);
-    //     };
-
-    //     // take while not equal to */, if get to Eof or None then syntax error
-    //     loop {
-    //         match self.iterator.next() {
-    //             Some(Token::CommentEnd) => break Ok(()),
-    //             Some(Token::Eof) | None => break Err("Unexpected end of file while parsing comment.".into()),
-    //             _ => continue
-    //         };
-    //     }
-    // }
+        Ok(Expression::Combination {
+            left: Some(Box::new(expression)),
+            operator: Operator(Token::Bang, Location::Postfix),
+            right: None,
+        })
+    }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression, SyntaxError> {
         // println!("{:?}", self.iterator.peek());
@@ -297,6 +290,9 @@ impl<I: Iterator<Item=Token>> Parser<I> {
                 | Some(&Token::Else)
                 | Some(&Token::RightBrace)
                 | Some(&Token::Bar) => break Ok(()),
+                Some(&Token::Bang) => {
+                    expression = self.parse_postfix_expression(expression)?;
+                },
                 Some(next_token) => {
                     let peek_precedence = Operator(next_token.clone(), Location::Infix).precedence()?;
                     if precedence < peek_precedence {
@@ -304,7 +300,7 @@ impl<I: Iterator<Item=Token>> Parser<I> {
                     } else {
                         break Ok(())
                     }
-                }
+                },
                 None => break Err::<_, SyntaxError>("Unexpected end of token stream.".into())
             }
         }?;
